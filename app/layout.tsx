@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     siteName: "Etupedia",
     images: [
       {
-        url: "https://etupedia.com/icon_light.png",
+        url: "https://etupedia.com/icon_dark.png",
         width: 512,
         height: 512,
         alt: "Etupedia - Free Human Knowledge Encyclopedia Logo",
@@ -75,7 +75,7 @@ export const metadata: Metadata = {
     title: "Etupedia - Free Human Knowledge Encyclopedia | Alternative to Wikipedia",
     description: "Etupedia is a free online encyclopedia and alternative to Wikipedia. Access 6.9M+ articles with AI-powered summaries.",
     creator: "@etupedia",
-    images: ["https://etupedia.com/icon_light.png"],
+    images: ["https://etupedia.com/icon_dark.png"],
   },
   robots: {
     index: true,
@@ -123,7 +123,7 @@ export default function RootLayout({
       name: 'Etupedia',
       logo: {
         '@type': 'ImageObject',
-        url: 'https://etupedia.com/icon_light.png',
+        url: 'https://etupedia.com/icon_dark.png',
         width: 512,
         height: 512
       }
@@ -138,9 +138,9 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         {/* Favicon */}
-        <link rel="icon" href="/icon_light.png" />
-        <link rel="apple-touch-icon" href="/icon_light.png" />
-        <link rel="shortcut icon" href="/icon_light.png" />
+        <link rel="icon" href="/icon_dark.png" />
+        <link rel="apple-touch-icon" href="/icon_dark.png" />
+        <link rel="shortcut icon" href="/icon_dark.png" />
       </head>
       <body
         className={`${spaceGrotesk.variable} ${spaceMono.variable} antialiased`}
