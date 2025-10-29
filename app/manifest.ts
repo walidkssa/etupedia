@@ -2,9 +2,9 @@ import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Etupedia - Academic Knowledge Encyclopedia',
+    name: 'Etupedia - Human Knowledge Encyclopedia',
     short_name: 'Etupedia',
-    description: 'A comprehensive encyclopedia for academic and university knowledge. Search 6.9M+ Wikipedia articles with AI-powered summaries.',
+    description: 'A comprehensive encyclopedia for human knowledge. Search 6.9M+ Wikipedia articles with AI-powered summaries.',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',

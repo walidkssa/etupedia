@@ -19,11 +19,11 @@ const spaceMono = Space_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL('https://etupedia.com'),
   title: {
-    default: "Etupedia - Academic Knowledge Encyclopedia",
+    default: "Etupedia - Human Knowledge Encyclopedia",
     template: "%s | Etupedia",
   },
-  description: "A comprehensive encyclopedia for academic and university knowledge. Search 6.9M+ Wikipedia articles with AI-powered summaries.",
-  keywords: ["encyclopedia", "academic", "knowledge", "wikipedia", "education", "research", "articles", "study", "learning", "university", "college"],
+  description: "A comprehensive encyclopedia for human knowledge. Search 6.9M+ Wikipedia articles with AI-powered summaries.",
+  keywords: ["encyclopedia", "human", "knowledge", "wikipedia", "education", "research", "articles", "study", "learning", "university", "college"],
   authors: [{ name: "Etupedia" }],
   creator: "Etupedia",
   publisher: "Etupedia",
@@ -36,8 +36,8 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "https://etupedia.com",
-    title: "Etupedia - Academic Knowledge Encyclopedia",
-    description: "A comprehensive encyclopedia for academic and university knowledge. Search 6.9M+ Wikipedia articles with AI-powered summaries.",
+    title: "Etupedia - Human Knowledge Encyclopedia",
+    description: "A comprehensive encyclopedia for human knowledge. Search 6.9M+ Wikipedia articles with AI-powered summaries.",
     siteName: "Etupedia",
     images: [
       {
@@ -50,8 +50,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Etupedia - Academic Knowledge Encyclopedia",
-    description: "A comprehensive encyclopedia for academic and university knowledge. Search 6.9M+ Wikipedia articles with AI-powered summaries.",
+    title: "Etupedia - Human Knowledge Encyclopedia",
+    description: "A comprehensive encyclopedia for human knowledge. Search 6.9M+ Wikipedia articles with AI-powered summaries.",
     creator: "@etupedia",
     images: ["/icon_light.png"],
   },
@@ -83,7 +83,7 @@ export default function RootLayout({
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'Etupedia',
-    description: 'A comprehensive encyclopedia for academic and university knowledge',
+    description: 'A comprehensive encyclopedia for human knowledge',
     url: 'https://etupedia.com',
     potentialAction: {
       '@type': 'SearchAction',
