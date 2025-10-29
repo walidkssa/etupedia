@@ -20,11 +20,32 @@ const spaceMono = Space_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL('https://etupedia.com'),
   title: {
-    default: "Etupedia - Human Knowledge Encyclopedia",
-    template: "%s | Etupedia",
+    default: "Etupedia - Free Human Knowledge Encyclopedia | Alternative to Wikipedia",
+    template: "%s | Etupedia - Human Knowledge Encyclopedia",
   },
-  description: "A comprehensive encyclopedia for human knowledge. Search 6.9M+ Wikipedia articles with AI-powered summaries.",
-  keywords: ["encyclopedia", "human", "knowledge", "wikipedia", "education", "research", "articles", "study", "learning", "university", "college"],
+  description: "Etupedia is a free online encyclopedia and alternative to Wikipedia. Access 6.9M+ articles with AI-powered summaries. Better than Wikipedia search with enhanced readability and modern design.",
+  keywords: [
+    "etupedia",
+    "encyclopedia",
+    "human knowledge",
+    "wikipedia",
+    "wikipedia alternative",
+    "free encyclopedia",
+    "online encyclopedia",
+    "wiki articles",
+    "wikipedia search",
+    "encyclopedia online",
+    "knowledge base",
+    "education",
+    "research",
+    "articles",
+    "study",
+    "learning",
+    "academic research",
+    "encyclopedia britannica alternative",
+    "free knowledge",
+    "wiki",
+  ],
   authors: [{ name: "Etupedia" }],
   creator: "Etupedia",
   publisher: "Etupedia",
@@ -37,24 +58,24 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "https://etupedia.com",
-    title: "Etupedia - Human Knowledge Encyclopedia",
-    description: "A comprehensive encyclopedia for human knowledge. Search 6.9M+ Wikipedia articles with AI-powered summaries.",
+    title: "Etupedia - Free Human Knowledge Encyclopedia | Alternative to Wikipedia",
+    description: "Etupedia is a free online encyclopedia and alternative to Wikipedia. Access 6.9M+ articles with AI-powered summaries. Better than Wikipedia search with enhanced readability.",
     siteName: "Etupedia",
     images: [
       {
-        url: "/icon_light.png",
+        url: "https://etupedia.com/icon_light.png",
         width: 512,
         height: 512,
-        alt: "Etupedia Logo",
+        alt: "Etupedia - Free Human Knowledge Encyclopedia Logo",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Etupedia - Human Knowledge Encyclopedia",
-    description: "A comprehensive encyclopedia for human knowledge. Search 6.9M+ Wikipedia articles with AI-powered summaries.",
+    title: "Etupedia - Free Human Knowledge Encyclopedia | Alternative to Wikipedia",
+    description: "Etupedia is a free online encyclopedia and alternative to Wikipedia. Access 6.9M+ articles with AI-powered summaries.",
     creator: "@etupedia",
-    images: ["/icon_light.png"],
+    images: ["https://etupedia.com/icon_light.png"],
   },
   robots: {
     index: true,
@@ -72,6 +93,9 @@ export const metadata: Metadata = {
   },
   verification: {
     google: "google-site-verification-code",
+  },
+  other: {
+    'google-site-verification': 'google-site-verification-code',
   },
 };
 
@@ -113,12 +137,10 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        {/* Favicon with theme support */}
-        <link rel="icon" href="/icon_light.png" media="(prefers-color-scheme: light)" />
-        <link rel="icon" href="/icon_dark.png" media="(prefers-color-scheme: dark)" />
-        <link rel="icon" href="/icon_dark.png" />
-        <link rel="apple-touch-icon" href="/icon_light.png" media="(prefers-color-scheme: light)" />
-        <link rel="apple-touch-icon" href="/icon_dark.png" media="(prefers-color-scheme: dark)" />
+        {/* Favicon */}
+        <link rel="icon" href="/icon_light.png" />
+        <link rel="apple-touch-icon" href="/icon_light.png" />
+        <link rel="shortcut icon" href="/icon_light.png" />
       </head>
       <body
         className={`${spaceGrotesk.variable} ${spaceMono.variable} antialiased`}

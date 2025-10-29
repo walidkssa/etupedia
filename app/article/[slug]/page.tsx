@@ -8,6 +8,7 @@ import { useTheme } from "@/components/theme-provider";
 import { ArticleWithTOC, Section } from "@/lib/types";
 import { SearchCommand } from "@/components/search-command";
 import { ArticleContent } from "@/components/article-content";
+import { ArticleHead } from "@/components/article-head";
 
 export default function ArticlePage() {
   const params = useParams();
@@ -186,8 +187,28 @@ export default function ArticlePage() {
     );
   }
 
+  // Generate description from first paragraph of content
+  const getDescription = () => {
+    if (!article) return "";
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(article.content, "text/html");
+    const firstParagraph = doc.querySelector("p");
+    const text = firstParagraph?.textContent || article.title;
+    return text.slice(0, 160) + (text.length > 160 ? "..." : "");
+  };
+
   return (
     <div className="min-h-screen bg-background transition-colors">
+      {/* Article SEO Meta Tags */}
+      {article && (
+        <ArticleHead
+          title={article.title}
+          description={getDescription()}
+          slug={slug}
+          url={article.url}
+        />
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-4">

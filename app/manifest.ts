@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Etupedia - Human Knowledge Encyclopedia',
     short_name: 'Etupedia',
-    description: 'A comprehensive encyclopedia for human knowledge. Search 6.9M+ Wikipedia articles with AI-powered summaries.',
+    description: 'Etupedia is a free online encyclopedia and alternative to Wikipedia. Access 6.9M+ articles with AI-powered summaries.',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
@@ -12,12 +12,6 @@ export default function manifest(): MetadataRoute.Manifest {
     icons: [
       {
         src: '/icon_light.png',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'any',
-      },
-      {
-        src: '/icon_dark.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
