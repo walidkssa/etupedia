@@ -53,7 +53,7 @@ export function ArticleHead({ title, description, slug, url }: ArticleHeadProps)
     updateOrCreateMeta("og:description", description);
     updateOrCreateMeta("og:url", `https://etupedia.com/article/${slug}`);
     updateOrCreateMeta("og:type", "article");
-    updateOrCreateMeta("og:image", "https://etupedia.com/icon_dark.png");
+    updateOrCreateMeta("og:image", "https://etupedia.com/og-image.png");
 
     // Update Twitter Card tags
     const updateOrCreateTwitterMeta = (name: string, content: string) => {
@@ -71,7 +71,7 @@ export function ArticleHead({ title, description, slug, url }: ArticleHeadProps)
     updateOrCreateTwitterMeta("twitter:card", "summary_large_image");
     updateOrCreateTwitterMeta("twitter:title", `${title} | Etupedia`);
     updateOrCreateTwitterMeta("twitter:description", description);
-    updateOrCreateTwitterMeta("twitter:image", "https://etupedia.com/icon_dark.png");
+    updateOrCreateTwitterMeta("twitter:image", "https://etupedia.com/og-image.png");
 
     // Add structured data for article
     let scriptTag = document.querySelector('script[type="application/ld+json"][data-article]');

@@ -63,9 +63,9 @@ export const metadata: Metadata = {
     siteName: "Etupedia",
     images: [
       {
-        url: "https://etupedia.com/icon_dark.png",
-        width: 512,
-        height: 512,
+        url: "https://etupedia.com/og-image.png",
+        width: 1200,
+        height: 630,
         alt: "Etupedia - Free Human Knowledge Encyclopedia Logo",
       },
     ],
@@ -75,7 +75,7 @@ export const metadata: Metadata = {
     title: "Etupedia - Free Human Knowledge Encyclopedia | Alternative to Wikipedia",
     description: "Etupedia is a free online encyclopedia and alternative to Wikipedia. Access 6.9M+ articles with AI-powered summaries.",
     creator: "@etupedia",
-    images: ["https://etupedia.com/icon_dark.png"],
+    images: ["https://etupedia.com/og-image.png"],
   },
   robots: {
     index: true,
