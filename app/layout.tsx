@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Analytics } from "@vercel/analytics/next";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -130,6 +131,7 @@ export default function RootLayout({
         >
           {children}
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
