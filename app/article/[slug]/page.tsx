@@ -228,7 +228,11 @@ export default function ArticlePage() {
             {/* Sidebar toggle button - always visible */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2.5 rounded-lg hover:bg-accent transition-colors shrink-0"
+              className={`p-2.5 rounded-lg transition-all shrink-0 ${
+                sidebarOpen
+                  ? 'bg-accent hover:bg-accent/80'
+                  : 'hover:bg-accent border-2 border-border'
+              }`}
               aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
               title={sidebarOpen ? "Close table of contents" : "Open table of contents"}
             >
