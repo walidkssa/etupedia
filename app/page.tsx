@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { MoonIcon, SunIcon } from "@radix-ui/react-icons";
-import { useTheme } from "@/components/theme-provider";
 import { SearchCommand } from "@/components/search-command";
 
 export default function Home() {
@@ -87,17 +86,6 @@ export default function Home() {
           )}
         </button>
       </header>
-
-      {/* Message Banner at top */}
-      <div className="absolute top-4 left-0 right-0 z-10">
-        <div className="max-w-2xl mx-auto px-16 sm:px-20">
-          <div className="text-center">
-            <p className="text-xs sm:text-sm text-muted-foreground leading-normal">
-              We embrace humanity, with its strengths and its flaws. Etupedia was born to bring new life to Wikipedia, this treasure of knowledge created by everyone and for everyone. Today, some want to erase this human achievement and replace it with machines. Let's not allow our dignity to fade into the billionaires' oblivion. Happy Halloween everyone 🎃
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* Main content - centered vertically */}
       <main className="relative z-10 flex flex-col items-center justify-center h-screen px-4 sm:px-6 overflow-hidden">
