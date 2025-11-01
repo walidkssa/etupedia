@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useLanguage } from "@/hooks/use-language";
 import { WIKIPEDIA_LANGUAGES, getLanguageName } from "@/lib/wikipedia-languages";
 import { GlobeIcon } from "@radix-ui/react-icons";
@@ -13,6 +14,8 @@ export function LanguageSelector({ compact = false }: LanguageSelectorProps) {
   const { currentLanguage, changeLanguage, mounted } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const pathname = usePathname();
+  const router = useRouter();
 
   if (!mounted) {
     return (
@@ -34,8 +37,19 @@ export function LanguageSelector({ compact = false }: LanguageSelectorProps) {
     setIsOpen(false);
     setSearchQuery("");
 
-    // Reload the page to fetch content in new language
-    window.location.reload();
+    // Check if we're on an article page
+    const articleMatch = pathname?.match(/^\/article\/([^?]+)/);
+
+    if (articleMatch) {
+      // We're on an article page - reload the same article in the new language
+      const slug = articleMatch[1];
+      router.push(`/article/${slug}?lang=${code}`);
+      // Force reload to fetch new content
+      window.location.href = `/article/${slug}?lang=${code}`;
+    } else {
+      // We're on homepage or other page - just reload
+      window.location.reload();
+    }
   };
 
   const currentLangName = getLanguageName(currentLanguage, true);
