@@ -251,7 +251,7 @@ export default function ArticlePage() {
             </div>
 
             {/* Search bar in header */}
-            <div className="flex-1 lg:max-w-xl">
+            <div className="flex-1 max-w-[25%] sm:max-w-none lg:max-w-xl">
               <SearchCommand placeholder="Search" compact />
             </div>
 
