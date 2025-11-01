@@ -101,8 +101,11 @@ export default function ArticlePage() {
     // Close mobile sidebar
     setSidebarOpen(false);
 
-    // Update URL hash
-    window.history.pushState(null, "", `#${sectionId}`);
+    // Update URL hash while preserving language parameter
+    const currentLang = searchParams.get('lang');
+    const langParam = currentLang ? `?lang=${currentLang}` : '';
+    const newUrl = `/article/${slug}${langParam}#${sectionId}`;
+    window.history.pushState(null, "", newUrl);
 
     // Scroll to element
     const element = document.querySelector(`[data-section-id="${sectionId}"]`);
