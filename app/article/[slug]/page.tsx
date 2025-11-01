@@ -29,6 +29,13 @@ export default function ArticlePage() {
   useEffect(() => {
     if (slug && mounted) {
       const lang = searchParams.get('lang') || currentLanguage;
+
+      // Update URL with language parameter if not present for proper sharing
+      if (!searchParams.get('lang') && lang !== 'en') {
+        const newUrl = `/article/${slug}?lang=${lang}`;
+        window.history.replaceState({}, '', newUrl);
+      }
+
       fetchArticle(slug, lang);
     }
   }, [slug, searchParams, currentLanguage, mounted]);
@@ -211,6 +218,7 @@ export default function ArticlePage() {
           description={getDescription()}
           slug={slug}
           url={article.url}
+          language={searchParams.get('lang') || currentLanguage}
         />
       )}
 

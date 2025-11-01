@@ -7,9 +7,10 @@ interface ArticleHeadProps {
   description: string;
   slug: string;
   url?: string;
+  language?: string;
 }
 
-export function ArticleHead({ title, description, slug, url }: ArticleHeadProps) {
+export function ArticleHead({ title, description, slug, url, language = 'en' }: ArticleHeadProps) {
   useEffect(() => {
     // Update document title
     document.title = `${title} | Etupedia - Human Knowledge Encyclopedia`;
@@ -25,14 +26,18 @@ export function ArticleHead({ title, description, slug, url }: ArticleHeadProps)
       document.head.appendChild(meta);
     }
 
+    // Build URLs with language parameter for proper sharing
+    const langParam = language !== 'en' ? `?lang=${language}` : '';
+    const articleUrl = `https://etupedia.com/article/${slug}${langParam}`;
+
     // Add/update canonical URL
     let canonical = document.querySelector('link[rel="canonical"]');
     if (canonical) {
-      canonical.setAttribute("href", `https://etupedia.com/article/${slug}`);
+      canonical.setAttribute("href", articleUrl);
     } else {
       canonical = document.createElement("link");
       canonical.setAttribute("rel", "canonical");
-      canonical.setAttribute("href", `https://etupedia.com/article/${slug}`);
+      canonical.setAttribute("href", articleUrl);
       document.head.appendChild(canonical);
     }
 
@@ -51,9 +56,10 @@ export function ArticleHead({ title, description, slug, url }: ArticleHeadProps)
 
     updateOrCreateMeta("og:title", `${title} | Etupedia`);
     updateOrCreateMeta("og:description", description);
-    updateOrCreateMeta("og:url", `https://etupedia.com/article/${slug}`);
+    updateOrCreateMeta("og:url", articleUrl);
     updateOrCreateMeta("og:type", "article");
     updateOrCreateMeta("og:image", "https://etupedia.com/og-image.png");
+    updateOrCreateMeta("og:locale", language === 'en' ? 'en_US' : language);
 
     // Update Twitter Card tags
     const updateOrCreateTwitterMeta = (name: string, content: string) => {
@@ -87,7 +93,8 @@ export function ArticleHead({ title, description, slug, url }: ArticleHeadProps)
       "@type": "Article",
       headline: title,
       description: description,
-      url: `https://etupedia.com/article/${slug}`,
+      url: articleUrl,
+      inLanguage: language,
       publisher: {
         "@type": "Organization",
         name: "Etupedia",
@@ -98,12 +105,12 @@ export function ArticleHead({ title, description, slug, url }: ArticleHeadProps)
       },
       mainEntityOfPage: {
         "@type": "WebPage",
-        "@id": `https://etupedia.com/article/${slug}`,
+        "@id": articleUrl,
       },
     };
 
     scriptTag.textContent = JSON.stringify(structuredData);
-  }, [title, description, slug, url]);
+  }, [title, description, slug, url, language]);
 
   return null;
 }
