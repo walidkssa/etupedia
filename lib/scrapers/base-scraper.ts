@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import type { AnyNode } from "domhandler";
 import axios, { AxiosInstance } from "axios";
+import { getReferenceSectionTitles } from "../reference-translations";
 
 export interface Reference {
   number: number;
@@ -114,8 +115,11 @@ export abstract class BaseScraper {
 
   /**
    * Extract sections from content
+   * @param $ - Cheerio instance
+   * @param contentSelector - CSS selector for content area
+   * @param languageCode - Wikipedia language code for multilingual reference detection
    */
-  protected extractSections($: cheerio.CheerioAPI, contentSelector: string): Section[] {
+  protected extractSections($: cheerio.CheerioAPI, contentSelector: string, languageCode: string = 'en'): Section[] {
     const sections: Section[] = [];
     let hitReferenceSection = false;
 
@@ -132,7 +136,8 @@ export abstract class BaseScraper {
       const id = $el.attr('id') || this.slugify(title);
 
       // If we hit a reference section, mark it and stop
-      if (this.shouldSkipSection(title)) {
+      // Works for all languages: "References", "Références", "Referenzen", etc.
+      if (this.shouldSkipSection(title, languageCode)) {
         hitReferenceSection = true;
         return false; // break the loop
       }
@@ -174,26 +179,24 @@ export abstract class BaseScraper {
 
   /**
    * Check if a section should be skipped
+   * @param title - Section title to check
+   * @param languageCode - Wikipedia language code for multilingual detection
    */
-  protected shouldSkipSection(title: string): boolean {
-    const skipTitles = [
-      'references',
-      'external links',
-      'see also',
-      'further reading',
-      'notes',
-      'citations',
-      'bibliography',
-      'general bibliography',
-      'sources',
-      'sources used',
-      'navigation',
-      'menu',
-      'explanatory notes',
-    ];
+  protected shouldSkipSection(title: string, languageCode: string = 'en'): boolean {
+    // Get all reference section titles for this language
+    const referenceTitles = getReferenceSectionTitles(languageCode);
+
+    // Also include English titles as fallback
+    const englishTitles = languageCode !== 'en' ? getReferenceSectionTitles('en') : [];
+
+    // Additional generic skip titles
+    const genericSkipTitles = ['navigation', 'menu', 'explanatory notes', 'general bibliography'];
+
+    // Combine all titles to check
+    const allSkipTitles = [...referenceTitles, ...englishTitles, ...genericSkipTitles];
 
     const normalizedTitle = title.toLowerCase().trim();
-    return skipTitles.some(skip => normalizedTitle === skip);
+    return allSkipTitles.some(skip => normalizedTitle === skip.toLowerCase());
   }
 
   /**
@@ -262,22 +265,17 @@ export abstract class BaseScraper {
    *     <li>Reference content...</li>
    *   </ol>
    * </div>
+   *
+   * @param $ - Cheerio instance
+   * @param languageCode - Wikipedia language code (e.g., 'en', 'fr', 'de') for multilingual support
    */
-  protected extractReferenceSections($: cheerio.CheerioAPI): ReferenceSection[] {
+  protected extractReferenceSections($: cheerio.CheerioAPI, languageCode: string = 'en'): ReferenceSection[] {
     const sections: ReferenceSection[] = [];
 
-    // Common reference section titles in Wikipedia
-    const sectionTitles = [
-      'Notes',
-      'References',
-      'Citations',
-      'Sources',
-      'Sources used',
-      'Bibliography',
-      'Further reading',
-      'External links',
-      'See also'
-    ];
+    // Get reference section titles for the specified language
+    // This allows us to detect "Références" in French, "Referenzen" in German, etc.
+    // All will be displayed under "References" in English on Etupedia
+    const sectionTitles = getReferenceSectionTitles(languageCode);
 
     // Process each section title
     sectionTitles.forEach(sectionTitle => {

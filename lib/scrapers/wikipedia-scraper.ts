@@ -205,8 +205,8 @@ export class WikipediaScraper extends BaseScraper {
       const contentSelector = "#mw-content-text .mw-parser-output";
       const content = this.cleanContent($, contentSelector);
 
-      // Extract sections
-      const sections = this.extractSections($, contentSelector);
+      // Extract sections with language-aware reference detection
+      const sections = this.extractSections($, contentSelector, this.languageCode);
 
       // Build cleaned HTML content with section IDs
       // We need to traverse direct children in order to respect DOM structure
@@ -224,7 +224,8 @@ export class WikipediaScraper extends BaseScraper {
         if (["h2", "h3", "h4", "h5", "h6"].includes(tagName)) {
           const title = $el.text().trim();
           // If we hit a reference section, stop ALL processing
-          if (this.shouldSkipSection(title)) {
+          // This works for all languages: "References" in English, "Références" in French, etc.
+          if (this.shouldSkipSection(title, this.languageCode)) {
             stopProcessing = true;
             return false;
           }
@@ -276,8 +277,9 @@ export class WikipediaScraper extends BaseScraper {
         keywords.push($(el).text().trim());
       });
 
-      // Extract references using new structured method
-      const referenceSections = this.extractReferenceSections($);
+      // Extract references using new structured method with language support
+      // This will detect "Références" in French, "Referenzen" in German, etc.
+      const referenceSections = this.extractReferenceSections($, this.languageCode);
 
       // Keep old method for backwards compatibility
       const references = this.extractReferences($);
