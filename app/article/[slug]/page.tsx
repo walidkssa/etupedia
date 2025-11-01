@@ -60,21 +60,17 @@ export default function ArticlePage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [article]);
 
-  // Close sidebar on window resize to desktop size
+  // Initialize sidebar state based on screen size
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setSidebarOpen(false);
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    // Open sidebar by default on desktop, closed on mobile
+    const isDesktop = window.innerWidth >= 1024;
+    setSidebarOpen(isDesktop);
   }, []);
 
-  // Prevent body scroll when sidebar is open on mobile
+  // Prevent body scroll when sidebar is open on mobile only
   useEffect(() => {
-    if (sidebarOpen) {
+    const isMobile = window.innerWidth < 1024;
+    if (sidebarOpen && isMobile) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
@@ -229,11 +225,12 @@ export default function ArticlePage() {
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between gap-4">
-            {/* Mobile menu button */}
+            {/* Sidebar toggle button - always visible */}
             <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2.5 rounded-lg hover:bg-accent transition-colors shrink-0"
-              aria-label="Open menu"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2.5 rounded-lg hover:bg-accent transition-colors shrink-0"
+              aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+              title={sidebarOpen ? "Close table of contents" : "Open table of contents"}
             >
               <HamburgerMenuIcon className="w-5 h-5" />
             </button>
@@ -319,9 +316,13 @@ export default function ArticlePage() {
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex gap-12">
           {/* Sidebar - Table of Contents */}
-          {/* Desktop sidebar */}
-          <aside className="hidden lg:block w-64 shrink-0">
-            <div className="sticky top-24 space-y-4 max-h-[calc(100vh-8rem)] overflow-y-auto pb-8">
+          {/* Desktop sidebar - toggleable */}
+          <aside className={`hidden lg:block w-64 shrink-0 transition-all duration-300 ${
+            sidebarOpen ? 'lg:w-64' : 'lg:w-0 lg:opacity-0 lg:pointer-events-none'
+          }`}>
+            <div className={`sticky top-24 space-y-4 max-h-[calc(100vh-8rem)] overflow-y-auto pb-8 ${
+              sidebarOpen ? '' : 'lg:hidden'
+            }`}>
               {/* Article title in sidebar */}
               <div className="space-y-1">
                 <button
