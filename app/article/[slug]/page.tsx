@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { MoonIcon, SunIcon, CheckCircledIcon, HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { useTheme } from "@/components/theme-provider";
@@ -9,10 +9,14 @@ import { ArticleWithTOC, Section } from "@/lib/types";
 import { SearchCommand } from "@/components/search-command";
 import { ArticleContent } from "@/components/article-content";
 import { ArticleHead } from "@/components/article-head";
+import { LanguageSelector } from "@/components/language-selector";
+import { useLanguage } from "@/hooks/use-language";
 
 export default function ArticlePage() {
   const params = useParams();
   const slug = params.slug as string;
+  const searchParams = useSearchParams();
+  const { currentLanguage, mounted } = useLanguage();
   const [article, setArticle] = useState<ArticleWithTOC | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<string>("");
@@ -23,10 +27,11 @@ export default function ArticlePage() {
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    if (slug) {
-      fetchArticle(slug);
+    if (slug && mounted) {
+      const lang = searchParams.get('lang') || currentLanguage;
+      fetchArticle(slug, lang);
     }
-  }, [slug]);
+  }, [slug, searchParams, currentLanguage, mounted]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -72,10 +77,10 @@ export default function ArticlePage() {
     };
   }, [sidebarOpen]);
 
-  const fetchArticle = async (articleSlug: string) => {
+  const fetchArticle = async (articleSlug: string, language: string = 'en') => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/article/${encodeURIComponent(articleSlug)}`);
+      const response = await fetch(`/api/article/${encodeURIComponent(articleSlug)}?lang=${language}`);
       const data = await response.json();
       setArticle(data);
     } catch (error) {
@@ -270,6 +275,9 @@ export default function ArticlePage() {
                   </>
                 )}
               </button>
+
+              {/* Language selector */}
+              <LanguageSelector compact />
 
               {/* Theme toggle */}
               <button

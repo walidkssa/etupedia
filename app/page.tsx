@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { MoonIcon, SunIcon } from "@radix-ui/react-icons";
 import { SearchCommand } from "@/components/search-command";
+import { LanguageSelector } from "@/components/language-selector";
 
 export default function Home() {
   const [articleCount, setArticleCount] = useState(0);
@@ -68,7 +69,8 @@ export default function Home() {
       )}
 
       {/* Header */}
-      <header className="absolute top-0 right-0 p-6 z-[100]">
+      <header className="absolute top-0 right-0 p-6 z-[100] flex gap-2">
+        <LanguageSelector compact />
         <button
           onClick={toggleTheme}
           className="p-2.5 rounded-lg hover:bg-accent transition-colors cursor-pointer relative z-[100]"

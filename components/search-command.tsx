@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { MagnifyingGlassIcon, ClockIcon, Cross2Icon } from "@radix-ui/react-icons";
+import { useLanguage } from "@/hooks/use-language";
 
 interface SearchResult {
   title: string;
@@ -25,6 +26,7 @@ export function SearchCommand({ placeholder, compact = false, hidePlaceholderOnM
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const { currentLanguage, mounted } = useLanguage();
 
   // Load search history from localStorage
   React.useEffect(() => {
@@ -50,7 +52,8 @@ export function SearchCommand({ placeholder, compact = false, hidePlaceholderOnM
 
       setLoading(true);
       try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const lang = mounted ? currentLanguage : 'en';
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&lang=${lang}`);
         const data = await response.json();
         setResults(data.results || []);
       } catch (error) {
@@ -63,7 +66,7 @@ export function SearchCommand({ placeholder, compact = false, hidePlaceholderOnM
 
     const debounce = setTimeout(fetchResults, 300);
     return () => clearTimeout(debounce);
-  }, [query]);
+  }, [query, currentLanguage, mounted]);
 
   const handleSelect = (result: SearchResult | string) => {
     const titleValue = typeof result === 'string' ? result : result.title;
@@ -78,8 +81,10 @@ export function SearchCommand({ placeholder, compact = false, hidePlaceholderOnM
     setOpen(false);
     setQuery("");
 
-    // Navigate to article (slug only, no source/url params)
-    router.push(`/article/${encodeURIComponent(typeof result === 'string' ? result : result.slug)}`);
+    // Navigate to article with language parameter
+    const slug = encodeURIComponent(typeof result === 'string' ? result : result.slug);
+    const lang = mounted ? currentLanguage : 'en';
+    router.push(`/article/${slug}?lang=${lang}`);
   };
 
   const removeFromHistory = (value: string, e: React.MouseEvent) => {

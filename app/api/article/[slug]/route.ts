@@ -11,17 +11,18 @@ export async function GET(
     const searchParams = request.nextUrl.searchParams;
     const source = searchParams.get("source") || "wikipedia";
     const url = searchParams.get("url");
+    const lang = searchParams.get("lang") || "en";
 
     let article;
 
     // If URL is provided, use it directly to scrape from the specific source
     if (url && source) {
-      article = await scraperManager.scrapeArticle(url, source);
+      article = await scraperManager.scrapeArticle(url, source, lang);
     }
 
     // If no article found with URL or URL not provided, try Wikipedia
     if (!article) {
-      article = await scraperManager.scrapeArticle(slug, "wikipedia");
+      article = await scraperManager.scrapeArticle(slug, "wikipedia", lang);
     }
 
     if (!article) {
@@ -31,7 +32,10 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(article);
+    return NextResponse.json({
+      ...article,
+      language: lang,
+    });
   } catch (error) {
     console.error("Article API error:", error);
     return NextResponse.json(

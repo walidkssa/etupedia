@@ -110,14 +110,14 @@ export class ScraperManager {
   /**
    * Search across all sources
    */
-  async search(query: string, sources?: string[]): Promise<SearchResult[]> {
-    // Detect language from query
-    const detectedLang = WikipediaScraper.detectLanguage(query);
+  async search(query: string, sources?: string[], language?: string): Promise<SearchResult[]> {
+    // Use provided language or detect from query
+    const lang = language || WikipediaScraper.detectLanguage(query);
 
     // If no sources specified, search ALL available scrapers
     const searchSources = sources || Array.from(this.scrapers.keys());
 
-    const cacheKey = `search:${query}:${searchSources.join(",")}:${detectedLang}`;
+    const cacheKey = `search:${query}:${searchSources.join(",")}:${lang}`;
     const cached = this.getFromCache<SearchResult[]>(cacheKey);
     if (cached) {
       return cached;
@@ -135,8 +135,8 @@ export class ScraperManager {
 
       try {
         // Create language-specific scraper if it's Wikipedia
-        if (source === "wikipedia" && detectedLang !== "en") {
-          const langScraper = new WikipediaScraper(detectedLang);
+        if (source === "wikipedia") {
+          const langScraper = new WikipediaScraper(lang);
           return await langScraper.search(query, 50);
         }
 
@@ -199,14 +199,19 @@ export class ScraperManager {
   /**
    * Scrape an article from a specific source
    */
-  async scrapeArticle(slug: string, source: string = "wikipedia"): Promise<ScrapedArticle | null> {
-    const cacheKey = `article:${source}:${slug}`;
+  async scrapeArticle(slug: string, source: string = "wikipedia", language: string = "en"): Promise<ScrapedArticle | null> {
+    const cacheKey = `article:${source}:${language}:${slug}`;
     const cached = this.getFromCache<ScrapedArticle>(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const scraper = this.scrapers.get(source);
+    // Create language-specific scraper if it's Wikipedia
+    let scraper = this.scrapers.get(source);
+    if (source === "wikipedia") {
+      scraper = new WikipediaScraper(language);
+    }
+
     if (!scraper) {
       console.error(`Scraper not found: ${source}`);
       return null;
