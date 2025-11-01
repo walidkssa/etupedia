@@ -242,9 +242,9 @@ export class ScraperManager {
    * Get article count across all sources (estimated)
    */
   async getArticleCount(): Promise<number> {
-    // Wikipedia English: 6,900,000+ articles
+    // Wikipedia all languages: 65,000,000+ articles
     // This is the most comprehensive academic encyclopedia available
-    return 6500000;
+    return 65000000;
   }
 
   /**

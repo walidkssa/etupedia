@@ -97,7 +97,7 @@ export default function Home() {
             <h1 className="font-space text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight inline-flex items-baseline justify-center gap-3 sm:gap-4 flex-wrap">
               <span>Etupedia</span>
               <span className="text-xs sm:text-sm font-mono px-2.5 sm:px-3 py-1 sm:py-1.5 bg-secondary text-secondary-foreground rounded-full -translate-y-1 sm:-translate-y-2">
-                v0.1
+                v1.0
               </span>
             </h1>
           </div>
