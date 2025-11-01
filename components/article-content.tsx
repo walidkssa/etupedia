@@ -6,6 +6,7 @@ import DOMPurify from "isomorphic-dompurify";
 
 interface ArticleContentProps {
   content: string;
+  language?: string;
 }
 
 interface PreviewData {
@@ -13,7 +14,7 @@ interface PreviewData {
   excerpt: string;
 }
 
-export function ArticleContent({ content }: ArticleContentProps) {
+export function ArticleContent({ content, language = 'en' }: ArticleContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [modalImage, setModalImage] = useState<string | null>(null);
@@ -136,7 +137,9 @@ export function ArticleContent({ content }: ArticleContentProps) {
             return;
           }
 
-          const etupediaUrl = `/article/${articleSlug}`;
+          // Build Etupedia URL with language parameter
+          const langParam = language !== 'en' ? `?lang=${language}` : '';
+          const etupediaUrl = `/article/${articleSlug}${langParam}`;
           const wikiTitle = decodeURIComponent(articleSlug.replace(/_/g, ' '));
 
           // Update the link to point to Etupedia
@@ -167,8 +170,8 @@ export function ArticleContent({ content }: ArticleContentProps) {
                 if (previewCacheRef.current.has(wikiTitle)) {
                   previewData = previewCacheRef.current.get(wikiTitle)!;
                 } else {
-                  // Fetch from Wikipedia API
-                  const apiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTitle)}`;
+                  // Fetch from Wikipedia API in the current language
+                  const apiUrl = `https://${language}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTitle)}`;
                   const response = await fetch(apiUrl);
                   const data = await response.json();
 
@@ -302,7 +305,7 @@ export function ArticleContent({ content }: ArticleContentProps) {
         }
       }, 100);
     }
-  }, [content]);
+  }, [content, language]);
 
   // Detect mobile on mount and resize
   useEffect(() => {

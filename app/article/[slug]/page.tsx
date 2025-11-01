@@ -517,7 +517,10 @@ export default function ArticlePage() {
               )}
 
               {/* Article body */}
-              <ArticleContent content={article.content} />
+              <ArticleContent
+                content={article.content}
+                language={searchParams.get('lang') || currentLanguage}
+              />
 
               {/* References sections */}
               {article.referenceSections && article.referenceSections.length > 0 && (
