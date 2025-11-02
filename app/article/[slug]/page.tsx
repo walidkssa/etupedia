@@ -223,13 +223,13 @@ export default function ArticlePage() {
 
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm">
-        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-4">
+        <div className="max-w-screen-2xl mx-auto px-2 lg:px-6 py-3 lg:py-4">
           <div className="flex items-center justify-start lg:justify-between gap-1 lg:gap-4">
             {/* Mobile layout: Hamburger + Search bar grouped */}
-            <div className="flex items-center gap-2 lg:hidden">
+            <div className="flex items-center gap-1.5 lg:hidden">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className={`p-2.5 rounded-lg transition-all shrink-0 ${
+                className={`p-2 rounded-lg transition-all shrink-0 ${
                   sidebarOpen
                     ? 'bg-accent hover:bg-accent/80'
                     : 'hover:bg-accent border-2 border-border'
@@ -237,9 +237,9 @@ export default function ArticlePage() {
                 aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
                 title={sidebarOpen ? "Close table of contents" : "Open table of contents"}
               >
-                <HamburgerMenuIcon className="w-5 h-5" />
+                <HamburgerMenuIcon className="w-4 h-4" />
               </button>
-              <div className="flex-1 max-w-[40%]">
+              <div className="w-[120px] sm:w-[160px]">
                 <SearchCommand placeholder="Search" compact />
               </div>
             </div>
@@ -270,12 +270,12 @@ export default function ArticlePage() {
               <SearchCommand placeholder="Search" compact />
             </div>
 
-            <div className="flex items-center gap-0.5 lg:gap-2 shrink-0">
+            <div className="flex items-center gap-1 lg:gap-2 shrink-0">
               {/* Summarize button */}
               <button
                 onClick={handleSummarize}
                 disabled={summarizing}
-                className="flex items-center gap-1.5 sm:px-3 px-2.5 py-2 rounded-lg bg-black dark:bg-transparent text-white hover:bg-gray-800 dark:hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:min-w-[130px] justify-center"
+                className="flex items-center gap-1 px-2 lg:px-3 py-1.5 lg:py-2 rounded-lg bg-black dark:bg-transparent text-white hover:bg-gray-800 dark:hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-xs lg:text-sm lg:min-w-[130px] justify-center"
                 style={{
                   border: theme === 'dark' ? '2px solid white' : '2px solid transparent'
                 }}
@@ -284,14 +284,13 @@ export default function ArticlePage() {
               >
                 {summarizing ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
-                    <span className="whitespace-nowrap hidden sm:inline">Summarizing...</span>
+                    <div className="animate-spin rounded-full h-3 w-3 lg:h-4 lg:w-4 border-2 border-current border-t-transparent"></div>
+                    <span className="whitespace-nowrap hidden lg:inline">Summarizing...</span>
                   </>
                 ) : (
                   <>
                     <svg
-                      width="16"
-                      height="16"
+                      className="w-3 h-3 lg:w-4 lg:h-4"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -301,7 +300,7 @@ export default function ArticlePage() {
                     >
                       <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
                     </svg>
-                    <span className="whitespace-nowrap hidden sm:inline">Summarize</span>
+                    <span className="whitespace-nowrap hidden lg:inline">Summarize</span>
                   </>
                 )}
               </button>
@@ -312,13 +311,13 @@ export default function ArticlePage() {
               {/* Theme toggle */}
               <button
                 onClick={toggleTheme}
-                className="p-2.5 rounded-lg hover:bg-accent transition-colors"
+                className="p-2 lg:p-2.5 rounded-lg hover:bg-accent transition-colors"
                 aria-label="Toggle theme"
               >
                 {theme === "light" ? (
-                  <SunIcon className="w-5 h-5" />
+                  <SunIcon className="w-4 h-4 lg:w-5 lg:h-5" />
                 ) : (
-                  <MoonIcon className="w-5 h-5" />
+                  <MoonIcon className="w-4 h-4 lg:w-5 lg:h-5" />
                 )}
               </button>
             </div>
