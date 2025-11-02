@@ -50,10 +50,14 @@ export function ArticleAssistant({
 
   // Initialize models when panel opens for the first time
   useEffect(() => {
-    if (isOpen) {
-      initializeModels();
+    if (isOpen && articleContent && articleTitle) {
+      // Add a small delay to ensure component is fully mounted
+      const timer = setTimeout(() => {
+        initializeModels();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [isOpen, initializeModels]);
+  }, [isOpen, articleContent, articleTitle, initializeModels]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

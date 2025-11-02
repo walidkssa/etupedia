@@ -273,10 +273,11 @@ export default function ArticlePage() {
             </div>
 
             <div className="flex items-center gap-1 lg:gap-2 shrink-0">
-              {/* AI Assistant button - Desktop only */}
+              {/* Assistant button - Desktop only */}
               <button
-                onClick={() => setAssistantOpen(true)}
-                className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg bg-black dark:bg-transparent text-white hover:bg-gray-800 dark:hover:bg-white/10 transition-colors font-medium text-sm min-w-[130px] justify-center"
+                onClick={() => article && setAssistantOpen(true)}
+                disabled={!article}
+                className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg bg-black dark:bg-transparent text-white hover:bg-gray-800 dark:hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm min-w-[130px] justify-center"
                 style={{
                   border: theme === 'dark' ? '2px solid white' : '2px solid transparent'
                 }}
@@ -294,7 +295,7 @@ export default function ArticlePage() {
                 >
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
-                <span className="whitespace-nowrap">AI Assistant</span>
+                <span className="whitespace-nowrap">Assistant</span>
               </button>
 
               {/* Language selector */}

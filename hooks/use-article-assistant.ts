@@ -1,10 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
-import { pipeline, env } from "@xenova/transformers";
-
-// Disable local model loading for faster performance
-env.allowLocalModels = false;
+import { useState, useCallback, useRef } from "react";
 
 interface Message {
   id: string;
@@ -28,16 +24,26 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
   const embeddingsRef = useRef<any>(null);
   const articleChunksRef = useRef<string[]>([]);
   const articleEmbeddingsRef = useRef<number[][]>([]);
+  const isInitializedRef = useRef<boolean>(false);
 
   // Initialize models
   const initializeModels = useCallback(async () => {
-    if (generatorRef.current && embeddingsRef.current) return;
+    // Prevent multiple initializations
+    if (isInitializedRef.current || isInitializing) return;
+    if (!articleContent || !articleTitle) return;
 
+    isInitializedRef.current = true;
     setIsInitializing(true);
     setError(null);
 
     try {
       console.log("Loading AI models...");
+
+      // Dynamically import transformers (client-side only)
+      const { pipeline, env } = await import("@xenova/transformers");
+
+      // Disable local model loading for faster performance
+      env.allowLocalModels = false;
 
       // Load embedding model for RAG (smaller, faster)
       if (!embeddingsRef.current) {
@@ -60,24 +66,26 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
       }
 
       // Process article into chunks for RAG
-      if (articleChunksRef.current.length === 0) {
+      if (articleChunksRef.current.length === 0 && articleContent) {
         console.log("Processing article...");
         const chunks = chunkArticle(articleContent);
         articleChunksRef.current = chunks;
 
         // Generate embeddings for each chunk
-        console.log("Generating embeddings...");
-        const embeddings = await Promise.all(
-          chunks.map(async (chunk) => {
-            const output = await embeddingsRef.current(chunk, {
-              pooling: "mean",
-              normalize: true,
-            });
-            return Array.from(output.data) as number[];
-          })
-        );
-        articleEmbeddingsRef.current = embeddings as number[][];
-        console.log("Article processed!");
+        if (chunks.length > 0) {
+          console.log("Generating embeddings...");
+          const embeddings = await Promise.all(
+            chunks.map(async (chunk) => {
+              const output = await embeddingsRef.current(chunk, {
+                pooling: "mean",
+                normalize: true,
+              });
+              return Array.from(output.data) as number[];
+            })
+          );
+          articleEmbeddingsRef.current = embeddings as number[][];
+          console.log("Article processed!");
+        }
       }
 
       setIsInitializing(false);
@@ -85,8 +93,9 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
       console.error("Error initializing models:", err);
       setError("Failed to load AI models. Please refresh and try again.");
       setIsInitializing(false);
+      isInitializedRef.current = false;
     }
-  }, [articleContent]);
+  }, [articleContent, articleTitle, isInitializing]);
 
   // Chunk article into smaller pieces for RAG
   const chunkArticle = (content: string): string[] => {
