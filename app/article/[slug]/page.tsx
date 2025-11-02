@@ -10,7 +10,7 @@ import { SearchCommand } from "@/components/search-command";
 import { ArticleContent } from "@/components/article-content";
 import { ArticleHead } from "@/components/article-head";
 import { LanguageSelector } from "@/components/language-selector";
-import { ArticleAssistant } from "@/components/article-assistant";
+import { ArticleAssistant } from "@/components/article-assistant-simple";
 import { useLanguage } from "@/hooks/use-language";
 
 export default function ArticlePage() {

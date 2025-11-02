@@ -76,25 +76,6 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
-  // Security headers for WebGPU and WebLLM
-  // IMPORTANT: credentialless mode allows WebGPU while not breaking CDN downloads
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          {
-            key: 'Cross-Origin-Embedder-Policy',
-            value: 'credentialless',
-          },
-          {
-            key: 'Cross-Origin-Opener-Policy',
-            value: 'same-origin',
-          },
-        ],
-      },
-    ];
-  },
   // Empty turbopack config to silence warning
   turbopack: {},
 };
