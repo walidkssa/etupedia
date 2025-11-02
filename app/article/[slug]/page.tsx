@@ -225,9 +225,8 @@ export default function ArticlePage() {
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between gap-4">
-            {/* Left side: Sidebar toggle + Search bar (grouped on mobile) */}
-            <div className="flex items-center gap-2 flex-1">
-              {/* Sidebar toggle button - always visible */}
+            {/* Mobile layout: Hamburger + Search bar grouped */}
+            <div className="flex items-center gap-2 flex-1 lg:hidden">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 className={`p-2.5 rounded-lg transition-all shrink-0 ${
@@ -240,19 +239,35 @@ export default function ArticlePage() {
               >
                 <HamburgerMenuIcon className="w-5 h-5" />
               </button>
+              <div className="flex-1 max-w-[40%]">
+                <SearchCommand placeholder="Search" compact />
+              </div>
+            </div>
 
-              {/* Desktop logo */}
+            {/* Desktop layout: Hamburger + Logo grouped, Search separate */}
+            <div className="hidden lg:flex items-center gap-3">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className={`p-2.5 rounded-lg transition-all shrink-0 ${
+                  sidebarOpen
+                    ? 'bg-accent hover:bg-accent/80'
+                    : 'hover:bg-accent border-2 border-border'
+                }`}
+                aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+                title={sidebarOpen ? "Close table of contents" : "Open table of contents"}
+              >
+                <HamburgerMenuIcon className="w-5 h-5" />
+              </button>
               <Link
                 href="/"
-                className="hidden lg:block font-space text-xl sm:text-2xl font-bold tracking-tight hover:opacity-80 transition-opacity"
+                className="font-space text-xl sm:text-2xl font-bold tracking-tight hover:opacity-80 transition-opacity"
               >
                 Etupedia
               </Link>
+            </div>
 
-              {/* Search bar in header - close to hamburger on mobile */}
-              <div className="flex-1 max-w-[40%] sm:max-w-none lg:max-w-xl">
-                <SearchCommand placeholder="Search" compact />
-              </div>
+            <div className="hidden lg:block flex-1 lg:max-w-xl">
+              <SearchCommand placeholder="Search" compact />
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
