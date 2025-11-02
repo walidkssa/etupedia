@@ -97,12 +97,12 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         chunksRef.current = chunks;
         console.log("✅ All chunks embedded");
 
-        // Step 3: Initialize Llama 3.2 1B
+        // Step 3: Initialize SmolLM2-1.7B
         if (!mounted) return;
-        setInitProgress("Loading Llama 3.2 1B...");
-        console.log("🦙 Loading Llama 3.2 1B");
+        setInitProgress("Loading SmolLM2-1.7B...");
+        console.log("🤖 Loading SmolLM2-1.7B");
 
-        const engine = await CreateMLCEngine("Llama-3.2-1B-Instruct-q4f16_1-MLC", {
+        const engine = await CreateMLCEngine("SmolLM2-1.7B-Instruct-q4f16_1-MLC", {
           initProgressCallback: (progress) => {
             if (!mounted) return;
             console.log("📥 Progress:", progress);
@@ -111,7 +111,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
               setInitProgress(progress.text);
             } else if (progress.progress !== undefined) {
               const percent = Math.round(progress.progress * 100);
-              setInitProgress(`Downloading Llama 3.2: ${percent}%`);
+              setInitProgress(`Downloading SmolLM2-1.7B: ${percent}%`);
             }
           },
         });
@@ -195,7 +195,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
       console.log(`📄 Using ${context.length} characters from semantic search`);
 
-      // Generate response with Llama 3.2 1B
+      // Generate response with SmolLM2-1.7B
       const completion = await engineRef.current.chat.completions.create({
         messages: [
           {
