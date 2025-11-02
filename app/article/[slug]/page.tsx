@@ -226,7 +226,7 @@ export default function ArticlePage() {
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between gap-1 lg:gap-4">
             {/* Mobile layout: Hamburger + Search bar grouped */}
-            <div className="flex items-center gap-2 flex-1 lg:hidden">
+            <div className="flex items-center gap-2 lg:hidden">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 className={`p-2.5 rounded-lg transition-all shrink-0 ${
