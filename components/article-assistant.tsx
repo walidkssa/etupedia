@@ -113,7 +113,7 @@ export function ArticleAssistant({
               <ReloadIcon className="w-8 h-8 text-primary animate-spin" />
             </div>
             <h3 className="font-semibold text-base mb-2">
-              Loading Phi-4 Model...
+              Connecting to AI...
             </h3>
             <p className="text-sm text-muted-foreground max-w-xs mb-3">
               {initProgress || "Initializing AI model..."}
@@ -149,7 +149,7 @@ export function ArticleAssistant({
               Ask me anything about this article, request a summary, or test your knowledge with a quiz!
             </p>
             <p className="text-xs text-primary/70 mt-3">
-              ✓ Powered by Phi-4 • 100% Local & Private
+              ✓ Powered by Phi-3 Mini • Free AI via Hugging Face
             </p>
           </div>
         )}
@@ -236,7 +236,7 @@ export function ArticleAssistant({
           </button>
         </form>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          Powered by Phi-4 • Runs locally in your browser • 100% private
+          Powered by Phi-3 Mini • Free AI via Hugging Face
         </p>
       </div>
     </div>

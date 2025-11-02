@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import * as webllm from "@mlc-ai/web-llm";
+import { useState } from "react";
 
 interface Message {
   id: string;
@@ -19,79 +18,18 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isInitializing, setIsInitializing] = useState(false);
-  const [initProgress, setInitProgress] = useState("");
 
-  const engineRef = useRef<webllm.MLCEngine | null>(null);
-  const isInitRef = useRef(false);
+  // No initialization needed - using Hugging Face API
+  const isInitializing = false;
+  const initProgress = "";
 
-  // Initialize model on mount
-  useEffect(() => {
-    if (isInitRef.current) return;
-    isInitRef.current = true;
-
-    async function initEngine() {
-      try {
-        console.log("🚀 Starting model initialization...");
-        setIsInitializing(true);
-        setError(null);
-
-        // Use Phi-3.5-mini as it's the most stable
-        const modelId = "Phi-3.5-mini-instruct-q4f16_1-MLC";
-
-        console.log(`📦 Loading model: ${modelId}`);
-        setInitProgress(`Initializing ${modelId}...`);
-
-        const engine = await webllm.CreateMLCEngine(modelId, {
-          initProgressCallback: (progress) => {
-            console.log("Progress:", progress);
-
-            // Update progress display - keep initializing true during download
-            if (progress.progress !== undefined) {
-              const percent = Math.round(progress.progress * 100);
-              setInitProgress(`Downloading model: ${percent}%`);
-              setIsInitializing(true); // Keep showing loading screen
-            } else if (progress.text) {
-              setInitProgress(progress.text);
-              setIsInitializing(true); // Keep showing loading screen
-            }
-          },
-        });
-
-        engineRef.current = engine;
-        console.log("✅ Model loaded successfully!");
-        setInitProgress("Model ready!");
-
-        // Wait a bit before hiding loading screen
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setIsInitializing(false);
-
-      } catch (err: any) {
-        console.error("❌ Failed to load model:", err);
-        setError(`Failed to load AI model: ${err.message}`);
-        setInitProgress("Failed to load model");
-        setIsInitializing(false);
-      }
-    }
-
-    initEngine();
-  }, []);
-
-  // Send message
+  // Send message using Hugging Face Inference API (free)
   async function sendMessage(content: string) {
     if (!content?.trim()) {
-      console.log("❌ Empty content");
       return;
     }
 
-    if (isLoading || isInitializing) {
-      console.log("❌ Busy or initializing");
-      return;
-    }
-
-    if (!engineRef.current) {
-      console.log("❌ Engine not ready");
-      setError("AI model not ready. Please wait for initialization.");
+    if (isLoading) {
       return;
     }
 
@@ -116,34 +54,52 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         .replace(/\[[0-9]+\]/g, "")
         .replace(/\s+/g, " ")
         .trim()
-        .substring(0, 2500);
+        .substring(0, 2000);
 
-      console.log("🤖 Generating response...");
+      const prompt = `You are analyzing an encyclopedia article titled "${articleTitle}".
 
-      const completion = await engineRef.current.chat.completions.create({
-        messages: [
-          {
-            role: "system",
-            content: `You are analyzing an encyclopedia article titled "${articleTitle}". Provide clear, concise answers based on the article content.`
+Article content: ${cleanContent}
+
+User question: ${content.trim()}
+
+Provide a clear, concise answer based on the article:`;
+
+      console.log("🤖 Calling Hugging Face API...");
+
+      // Use Hugging Face Inference API (free, no key needed for public models)
+      const response = await fetch(
+        "https://api-inference.huggingface.co/models/microsoft/Phi-3-mini-4k-instruct",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-          {
-            role: "user",
-            content: `Article content: ${cleanContent}\n\nQuestion: ${content.trim()}`
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 800,
-      });
+          body: JSON.stringify({
+            inputs: prompt,
+            parameters: {
+              max_new_tokens: 500,
+              temperature: 0.7,
+              top_p: 0.9,
+              return_full_text: false,
+            },
+          }),
+        }
+      );
 
-      const answer = completion.choices[0]?.message?.content || "No response generated";
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
 
-      console.log("✅ Response received:", answer.substring(0, 100));
+      const data = await response.json();
+      const answer = data[0]?.generated_text || data.generated_text || "No response generated";
+
+      console.log("✅ Response received");
 
       // Add assistant message
       const assistantMsg: Message = {
         id: `assistant-${Date.now()}`,
         role: "assistant",
-        content: answer,
+        content: answer.trim(),
         timestamp: Date.now(),
       };
 
@@ -156,7 +112,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
       const errorMsg: Message = {
         id: `error-${Date.now()}`,
         role: "assistant",
-        content: "Sorry, an error occurred. Please try again.",
+        content: "Sorry, an error occurred. The AI model may be loading. Please wait a moment and try again.",
         timestamp: Date.now(),
       };
 
@@ -168,7 +124,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
   // Generate summary
   async function generateSummary() {
-    if (isLoading || isInitializing || !engineRef.current) {
+    if (isLoading) {
       return;
     }
 
@@ -190,31 +146,45 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         .replace(/\[[0-9]+\]/g, "")
         .replace(/\s+/g, " ")
         .trim()
-        .substring(0, 3500);
+        .substring(0, 2500);
 
-      const completion = await engineRef.current.chat.completions.create({
-        messages: [
-          {
-            role: "system",
-            content: "You are a helpful assistant that creates concise summaries."
+      const prompt = `Summarize this encyclopedia article titled "${articleTitle}" in 3-5 clear bullet points:
+
+${cleanContent}
+
+Summary:`;
+
+      const response = await fetch(
+        "https://api-inference.huggingface.co/models/microsoft/Phi-3-mini-4k-instruct",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-          {
-            role: "user",
-            content: `Summarize this encyclopedia article titled "${articleTitle}" in 3-5 clear bullet points:\n\n${cleanContent}`
-          }
-        ],
-        temperature: 0.5,
-        max_tokens: 600,
-      });
+          body: JSON.stringify({
+            inputs: prompt,
+            parameters: {
+              max_new_tokens: 400,
+              temperature: 0.5,
+              return_full_text: false,
+            },
+          }),
+        }
+      );
 
-      const summary = completion.choices[0]?.message?.content || "Failed to generate summary";
+      if (!response.ok) {
+        throw new Error("Failed to generate summary");
+      }
+
+      const data = await response.json();
+      const summary = data[0]?.generated_text || data.generated_text || "Failed to generate summary";
 
       setMessages((prev) => [
         ...prev,
         {
           id: `assistant-${Date.now()}`,
           role: "assistant",
-          content: summary,
+          content: summary.trim(),
           timestamp: Date.now(),
         },
       ]);
@@ -225,7 +195,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         {
           id: `error-${Date.now()}`,
           role: "assistant",
-          content: "Failed to generate summary.",
+          content: "Failed to generate summary. Please try again.",
           timestamp: Date.now(),
         },
       ]);
@@ -236,7 +206,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
   // Generate quiz
   async function generateQuiz() {
-    if (isLoading || isInitializing || !engineRef.current) {
+    if (isLoading) {
       return;
     }
 
@@ -258,31 +228,50 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         .replace(/\[[0-9]+\]/g, "")
         .replace(/\s+/g, " ")
         .trim()
-        .substring(0, 3500);
+        .substring(0, 2500);
 
-      const completion = await engineRef.current.chat.completions.create({
-        messages: [
-          {
-            role: "system",
-            content: "You are a helpful assistant that creates educational quizzes."
+      const prompt = `Create 3 multiple-choice questions about this article titled "${articleTitle}":
+
+${cleanContent}
+
+Format each question with:
+- The question
+- 4 options (A, B, C, D)
+- Indicate the correct answer
+
+Questions:`;
+
+      const response = await fetch(
+        "https://api-inference.huggingface.co/models/microsoft/Phi-3-mini-4k-instruct",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-          {
-            role: "user",
-            content: `Create 3 multiple-choice questions about this article titled "${articleTitle}":\n\n${cleanContent}\n\nFormat each question with:\n- The question\n- 4 options (A, B, C, D)\n- Indicate the correct answer`
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 800,
-      });
+          body: JSON.stringify({
+            inputs: prompt,
+            parameters: {
+              max_new_tokens: 600,
+              temperature: 0.7,
+              return_full_text: false,
+            },
+          }),
+        }
+      );
 
-      const quiz = completion.choices[0]?.message?.content || "Failed to generate quiz";
+      if (!response.ok) {
+        throw new Error("Failed to generate quiz");
+      }
+
+      const data = await response.json();
+      const quiz = data[0]?.generated_text || data.generated_text || "Failed to generate quiz";
 
       setMessages((prev) => [
         ...prev,
         {
           id: `assistant-${Date.now()}`,
           role: "assistant",
-          content: quiz,
+          content: quiz.trim(),
           timestamp: Date.now(),
         },
       ]);
@@ -293,7 +282,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         {
           id: `error-${Date.now()}`,
           role: "assistant",
-          content: "Failed to generate quiz.",
+          content: "Failed to generate quiz. Please try again.",
           timestamp: Date.now(),
         },
       ]);
