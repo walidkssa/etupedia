@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { aiEngine, type EngineStatus } from "@/lib/ai-engine";
+import { useState } from "react";
 
 interface Message {
   id: string;
@@ -19,41 +18,13 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [engineStatus, setEngineStatus] = useState<EngineStatus>({
-    status: "initializing",
-    message: "Starting AI engine...",
-  });
+  const [isInitializing] = useState(false); // GPT4Free is always ready
+  const [initProgress] = useState(""); // No initialization needed
 
-  // Subscribe to engine status updates
-  useEffect(() => {
-    console.log("🔌 Subscribing to AI Engine status");
-
-    const unsubscribe = aiEngine.subscribe((status) => {
-      console.log("📡 Engine status update:", status);
-      setEngineStatus(status);
-
-      if (status.status === "error") {
-        setError(status.message);
-      } else {
-        setError(null);
-      }
-    });
-
-    // Initialize engine
-    aiEngine.initialize().catch((err) => {
-      console.error("❌ Failed to initialize engine:", err);
-      setError(err.message || "Failed to initialize AI engine");
-    });
-
-    return unsubscribe;
-  }, []);
-
-  // Send message
+  // Send message using GPT4Free
   async function sendMessage(content: string) {
-    console.log("\n=== 📤 SEND MESSAGE ===");
+    console.log("\n=== 📤 SEND MESSAGE (GPT4Free) ===");
     console.log("Content:", content);
-    console.log("Engine ready:", aiEngine.isReady());
-    console.log("Is loading:", isLoading);
 
     if (!content?.trim()) {
       console.log("❌ Empty content");
@@ -65,7 +36,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
       return;
     }
 
-    console.log("✅ Starting message processing");
+    console.log("✅ Starting message processing with GPT4Free");
 
     setIsLoading(true);
     setError(null);
@@ -89,55 +60,29 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         .trim()
         .substring(0, 6000);
 
-      let answer: string;
+      console.log("🌐 Calling GPT4Free API...");
 
-      // Try local AI engine first
-      if (aiEngine.isReady()) {
-        console.log("🤖 Using local AI engine (Phi-3.5 Mini)...");
+      // Call GPT4Free via API route
+      const response = await fetch('/api/gpt4free', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'chat',
+          articleTitle,
+          articleContent: cleanContent,
+          question: content.trim()
+        })
+      });
 
-        const systemPrompt = `You are a helpful assistant. Answer questions about this article.
-
-Article: "${articleTitle}"
-
-Content: ${cleanContent}
-
-Provide clear, helpful answers.`;
-
-        answer = await aiEngine.chat(
-          [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: content.trim() },
-          ],
-          {
-            temperature: 0.5,
-            max_tokens: 1000,
-          }
-        );
-
-        console.log("✅ Got response from local engine");
-      } else {
-        // Fallback to ChatGPT Free API
-        console.log("🌐 Local engine not ready, using ChatGPT Free API...");
-
-        const response = await fetch('/api/chatgpt-free', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            articleTitle,
-            articleContent: cleanContent,
-            question: content.trim()
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error('ChatGPT Free API failed');
-        }
-
-        const data = await response.json();
-        answer = data.response;
-
-        console.log("✅ Got response from ChatGPT Free");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'GPT4Free API failed');
       }
+
+      const data = await response.json();
+      const answer = data.response;
+
+      console.log("✅ Got response from GPT4Free:", answer.substring(0, 100));
 
       // Add assistant message
       const assistantMsg: Message = {
@@ -166,12 +111,12 @@ Provide clear, helpful answers.`;
     }
   }
 
-  // Generate summary
+  // Generate summary using GPT4Free
   async function generateSummary() {
-    console.log("📝 Generating summary");
+    console.log("📝 Generating summary with GPT4Free");
 
-    if (!aiEngine.isReady() || isLoading) {
-      console.log("❌ Cannot generate summary - engine not ready or already loading");
+    if (isLoading) {
+      console.log("❌ Cannot generate summary - already loading");
       return;
     }
 
@@ -195,16 +140,22 @@ Provide clear, helpful answers.`;
         .trim()
         .substring(0, 4000);
 
-      const summary = await aiEngine.chat(
-        [
-          { role: "system", content: "Provide a concise summary in bullet points." },
-          { role: "user", content: `Article: "${articleTitle}"\n\n${cleanContent}` },
-        ],
-        {
-          temperature: 0.3,
-          max_tokens: 500,
-        }
-      );
+      const response = await fetch('/api/gpt4free', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'summary',
+          articleTitle,
+          articleContent: cleanContent
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate summary');
+      }
+
+      const data = await response.json();
+      const summary = data.response;
 
       setMessages((prev) => [
         ...prev,
@@ -231,12 +182,12 @@ Provide clear, helpful answers.`;
     }
   }
 
-  // Generate quiz
+  // Generate quiz using GPT4Free
   async function generateQuiz() {
-    console.log("📝 Generating quiz");
+    console.log("📝 Generating quiz with GPT4Free");
 
-    if (!aiEngine.isReady() || isLoading) {
-      console.log("❌ Cannot generate quiz - engine not ready or already loading");
+    if (isLoading) {
+      console.log("❌ Cannot generate quiz - already loading");
       return;
     }
 
@@ -260,16 +211,22 @@ Provide clear, helpful answers.`;
         .trim()
         .substring(0, 4000);
 
-      const quiz = await aiEngine.chat(
-        [
-          { role: "system", content: "Create 3 multiple-choice questions about the article." },
-          { role: "user", content: `Article: "${articleTitle}"\n\n${cleanContent}` },
-        ],
-        {
-          temperature: 0.5,
-          max_tokens: 800,
-        }
-      );
+      const response = await fetch('/api/gpt4free', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'quiz',
+          articleTitle,
+          articleContent: cleanContent
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate quiz');
+      }
+
+      const data = await response.json();
+      const quiz = data.response;
 
       setMessages((prev) => [
         ...prev,
@@ -305,8 +262,8 @@ Provide clear, helpful answers.`;
   return {
     messages,
     isLoading,
-    isInitializing: engineStatus.status === "initializing",
-    initProgress: engineStatus.message,
+    isInitializing,
+    initProgress,
     error,
     sendMessage,
     generateSummary,

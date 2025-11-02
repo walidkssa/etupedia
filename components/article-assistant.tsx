@@ -106,26 +106,7 @@ export function ArticleAssistant({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Model loading progress */}
-        {isInitializing && (
-          <div className="flex flex-col items-center justify-center h-full text-center p-6">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <ReloadIcon className="w-8 h-8 text-primary animate-spin" />
-            </div>
-            <h3 className="font-semibold text-base mb-2">
-              Loading AI Model
-            </h3>
-            <p className="text-sm text-muted-foreground max-w-md mb-4">
-              {initProgress || "Downloading Phi-3.5 Mini Instruct..."}
-            </p>
-            <div className="w-full max-w-xs bg-secondary rounded-full h-2 overflow-hidden">
-              <div className="bg-primary h-full animate-pulse"></div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-4">
-              Loading latest Phi model - First load takes 1-2 minutes
-            </p>
-          </div>
-        )}
+        {/* No initialization needed with GPT4Free */}
 
         {/* Welcome message */}
         {!isInitializing && messages.length === 0 && (
@@ -152,7 +133,7 @@ export function ArticleAssistant({
               Ask me anything about this article, request a summary, or test your knowledge with a quiz!
             </p>
             <p className="text-xs text-primary/70 mt-3">
-              ✓ Powered by Phi-3.5 Mini running locally
+              ✓ Powered by GPT4Free • Free & Unlimited
             </p>
           </div>
         )}
@@ -239,7 +220,7 @@ export function ArticleAssistant({
           </button>
         </form>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          Powered by Phi-3.5 Mini Instruct running locally • 100% private
+          Powered by GPT4Free • Multiple AI providers • 100% free
         </p>
       </div>
     </div>
