@@ -205,6 +205,17 @@ export class WikipediaScraper extends BaseScraper {
       const contentSelector = "#mw-content-text .mw-parser-output";
       const content = this.cleanContent($, contentSelector);
 
+      // Proxy all Wikipedia images through our API to fix CORS issues
+      content.find('img').each((_, img) => {
+        const $img = $(img);
+        const src = $img.attr('src');
+        if (src && (src.startsWith('https:') || src.startsWith('//'))) {
+          const fullUrl = src.startsWith('//') ? 'https:' + src : src;
+          const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(fullUrl)}`;
+          $img.attr('src', proxiedUrl);
+        }
+      });
+
       // Extract sections with language-aware reference detection
       const sections = this.extractSections($, contentSelector, this.languageCode);
 
@@ -256,12 +267,15 @@ export class WikipediaScraper extends BaseScraper {
       // Extract excerpt
       const excerpt = this.extractExcerpt($, contentSelector + " > p", 300);
 
-      // Extract images
+      // Extract images and proxy them through our API to handle CORS
       const images: string[] = [];
       content.find("img").each((_, img) => {
         const src = $(img).attr("src");
         if (src && src.startsWith("//")) {
-          images.push("https:" + src);
+          const fullUrl = "https:" + src;
+          // Proxy Wikipedia images through our API to fix CORS issues with require-corp
+          const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(fullUrl)}`;
+          images.push(proxiedUrl);
         }
       });
 

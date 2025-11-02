@@ -272,17 +272,28 @@ export function ArticleContent({ content, language = 'en' }: ArticleContentProps
           let imgSrc = img.getAttribute("src");
 
           if (imgSrc) {
-            // Try to get high-resolution version from Wikipedia
-            if (imgSrc.includes("wikipedia") || imgSrc.includes("wikimedia")) {
-              // Remove thumbnail sizing from Wikipedia URLs
-              // Example: //upload.wikimedia.org/wikipedia/commons/thumb/a/b/File.jpg/220px-File.jpg
-              // Convert to: //upload.wikimedia.org/wikipedia/commons/a/b/File.jpg
-              imgSrc = imgSrc.replace(/\/thumb\/(.*?)\/[\d]+px-.*$/, "/$1");
+            // If image is already proxied, extract the original URL
+            if (imgSrc.includes("/api/proxy-image?url=")) {
+              const urlParam = new URLSearchParams(imgSrc.split("?")[1]).get("url");
+              if (urlParam) {
+                let originalUrl = decodeURIComponent(urlParam);
 
-              // Ensure it uses https
+                // Try to get high-resolution version from Wikipedia
+                if (originalUrl.includes("wikipedia") || originalUrl.includes("wikimedia")) {
+                  // Remove thumbnail sizing from Wikipedia URLs
+                  originalUrl = originalUrl.replace(/\/thumb\/(.*?)\/[\d]+px-.*$/, "/$1");
+                }
+
+                // Re-proxy the high-res version
+                imgSrc = `/api/proxy-image?url=${encodeURIComponent(originalUrl)}`;
+              }
+            } else if (imgSrc.includes("wikipedia") || imgSrc.includes("wikimedia")) {
+              // Handle legacy direct URLs (if any exist)
+              imgSrc = imgSrc.replace(/\/thumb\/(.*?)\/[\d]+px-.*$/, "/$1");
               if (imgSrc.startsWith("//")) {
                 imgSrc = "https:" + imgSrc;
               }
+              imgSrc = `/api/proxy-image?url=${encodeURIComponent(imgSrc)}`;
             }
 
             setModalImage(imgSrc);
