@@ -113,15 +113,15 @@ export function ArticleAssistant({
               <ReloadIcon className="w-8 h-8 text-primary animate-spin" />
             </div>
             <h3 className="font-semibold text-base mb-2">
-              Loading AI Models
+              Loading AI Model
             </h3>
             <p className="text-sm text-muted-foreground max-w-xs mb-3">
               {initProgress || "Initializing..."}
             </p>
             <div className="text-xs text-muted-foreground/60 space-y-1 max-w-xs">
-              <p>🤖 SmolLM2-1.7B Language Model</p>
-              <p>⏱️ First load: 1-2 minutes</p>
-              <p>💾 Cached after first load</p>
+              <p>🤖 Google Gemma-2-2B</p>
+              <p>⏱️ First load: ~1 minute</p>
+              <p>💾 Cached for instant reload</p>
             </div>
           </div>
         )}
@@ -151,7 +151,7 @@ export function ArticleAssistant({
               Ask me anything about this article, request a summary, or test your knowledge with a quiz!
             </p>
             <p className="text-xs text-primary/70 mt-3">
-              ✓ SmolLM2-1.7B • 100% Local & Private
+              ✓ Google Gemma-2-2B • 100% Local & Private
             </p>
           </div>
         )}
@@ -238,7 +238,7 @@ export function ArticleAssistant({
           </button>
         </form>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          Powered by SmolLM2-1.7B • Runs locally in your browser
+          Powered by Google Gemma-2-2B • Runs locally in your browser
         </p>
       </div>
     </div>

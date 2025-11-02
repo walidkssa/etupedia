@@ -25,7 +25,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
   const engineRef = useRef<any>(null);
   const initPromiseRef = useRef<Promise<void> | null>(null);
 
-  // Initialize SmolLM2-1.7B
+  // Initialize Gemma-2-2B (Google's efficient model)
   useEffect(() => {
     if (initPromiseRef.current) return;
 
@@ -33,40 +33,36 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
     const initEngine = async () => {
       try {
-        console.log("🚀 Initializing SmolLM2-1.7B...");
-        setInitProgress("Loading SmolLM2-1.7B...");
+        console.log("🚀 Initializing Gemma-2-2B...");
+        setInitProgress("Loading AI model...");
 
-        const engine = await CreateMLCEngine("SmolLM2-1.7B-Instruct-q4f16_1-MLC", {
+        const engine = await CreateMLCEngine("gemma-2-2b-it-q4f16_1-MLC", {
           initProgressCallback: (progress) => {
             if (!mounted) return;
-            console.log("📥 Progress:", progress);
 
             if (progress.text) {
+              console.log("📥", progress.text);
               setInitProgress(progress.text);
             } else if (progress.progress !== undefined) {
               const percent = Math.round(progress.progress * 100);
-              setInitProgress(`Downloading model: ${percent}%`);
+              console.log(`📥 Download: ${percent}%`);
+              setInitProgress(`Downloading: ${percent}%`);
             }
           },
         });
 
         if (!mounted) return;
 
-        console.log("✅ Model loaded successfully!");
+        console.log("✅ Model ready!");
         engineRef.current = engine;
         setIsInitializing(false);
         setInitProgress("");
 
       } catch (err: any) {
-        console.error("❌ Initialization error:", err);
+        console.error("❌ Error:", err);
         if (!mounted) return;
 
-        let errorMsg = "Failed to load model";
-        if (err?.message) {
-          errorMsg = err.message;
-        }
-
-        setError(errorMsg);
+        setError(err?.message || "Failed to load model");
         setIsInitializing(false);
       }
     };
@@ -95,32 +91,30 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     setMessages((prev) => [...prev, userMsg]);
 
     try {
-      // Clean article content
+      // Clean article content (remove HTML tags and extra spaces)
       const cleanContent = articleContent
         .replace(/<[^>]*>/g, " ")
         .replace(/\[[0-9]+\]/g, "")
         .replace(/\s+/g, " ")
         .trim();
 
-      // Use full article content (SmolLM2 has good context window)
-      const contextContent = cleanContent.length > 30000
-        ? cleanContent.substring(0, 30000) + "\n\n[Article continues...]"
+      // Gemma-2-2B has 8K context - use reasonable chunk
+      const contextContent = cleanContent.length > 20000
+        ? cleanContent.substring(0, 20000) + "\n[...]"
         : cleanContent;
 
-      console.log(`📄 Context: ${contextContent.length} chars`);
+      console.log(`📄 Using ${contextContent.length} chars`);
 
-      // Generate response with SmolLM2-1.7B
+      // Generate response with Gemma-2-2B
       const completion = await engineRef.current.chat.completions.create({
         messages: [
           {
             role: "system",
-            content: `You are analyzing: "${articleTitle}"
+            content: `You are analyzing the Wikipedia article: "${articleTitle}"
 
-RULES:
-1. Answer ONLY from the article below
-2. If not in article, say: "Not in article"
-3. Be concise and accurate
-4. Quote specific parts when relevant
+Answer questions ONLY using information from the article below.
+If the answer is not in the article, say "I don't see that information in the article."
+Be accurate, concise, and helpful.
 
 ARTICLE:
 ${contextContent}`,
@@ -130,8 +124,8 @@ ${contextContent}`,
             content: content.trim(),
           },
         ],
-        temperature: 0.2,
-        max_tokens: 500,
+        temperature: 0.3,
+        max_tokens: 600,
       });
 
       const answer = completion.choices[0]?.message?.content || "No response";
@@ -146,15 +140,15 @@ ${contextContent}`,
         },
       ]);
     } catch (err: any) {
-      console.error("❌ Chat error:", err);
-      setError(err.message);
+      console.error("❌ Error:", err);
+      setError(err?.message || "Something went wrong");
 
       setMessages((prev) => [
         ...prev,
         {
           id: `error-${Date.now()}`,
           role: "assistant",
-          content: "Error. Please try again.",
+          content: "Sorry, there was an error. Please try again.",
           timestamp: Date.now(),
         },
       ]);
@@ -164,11 +158,11 @@ ${contextContent}`,
   }
 
   async function generateSummary() {
-    await sendMessage("Summarize this article in 5-7 bullet points using ONLY article content.");
+    await sendMessage("Please summarize this article in 5-7 clear bullet points.");
   }
 
   async function generateQuiz() {
-    await sendMessage("Create 3 quiz questions with answers based ONLY on this article.");
+    await sendMessage("Create 3 quiz questions with answers based on this article.");
   }
 
   function clearChat() {
