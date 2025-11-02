@@ -64,34 +64,36 @@ User question: ${content.trim()}
 
 Provide a clear, concise answer based on the article:`;
 
-      console.log("🤖 Calling Hugging Face API...");
+      console.log("🤖 Calling AI API...");
 
-      // Use Hugging Face Inference API (free, no key needed for public models)
-      const response = await fetch(
-        "https://api-inference.huggingface.co/models/microsoft/Phi-3-mini-4k-instruct",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+      // Use our Next.js API route to call Hugging Face
+      const response = await fetch("/api/huggingface", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt,
+          parameters: {
+            max_new_tokens: 500,
+            temperature: 0.7,
+            top_p: 0.9,
           },
-          body: JSON.stringify({
-            inputs: prompt,
-            parameters: {
-              max_new_tokens: 500,
-              temperature: 0.7,
-              top_p: 0.9,
-              return_full_text: false,
-            },
-          }),
-        }
-      );
+        }),
+      });
 
       if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+
+        if (errorData.retry) {
+          throw new Error(errorData.message || "Model is loading. Please try again.");
+        }
+
+        throw new Error(errorData.error || `API error: ${response.status}`);
       }
 
       const data = await response.json();
-      const answer = data[0]?.generated_text || data.generated_text || "No response generated";
+      const answer = data.answer || "No response generated";
 
       console.log("✅ Response received");
 
@@ -154,30 +156,26 @@ ${cleanContent}
 
 Summary:`;
 
-      const response = await fetch(
-        "https://api-inference.huggingface.co/models/microsoft/Phi-3-mini-4k-instruct",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+      const response = await fetch("/api/huggingface", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt,
+          parameters: {
+            max_new_tokens: 400,
+            temperature: 0.5,
           },
-          body: JSON.stringify({
-            inputs: prompt,
-            parameters: {
-              max_new_tokens: 400,
-              temperature: 0.5,
-              return_full_text: false,
-            },
-          }),
-        }
-      );
+        }),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to generate summary");
       }
 
       const data = await response.json();
-      const summary = data[0]?.generated_text || data.generated_text || "Failed to generate summary";
+      const summary = data.answer || "Failed to generate summary";
 
       setMessages((prev) => [
         ...prev,
@@ -241,30 +239,26 @@ Format each question with:
 
 Questions:`;
 
-      const response = await fetch(
-        "https://api-inference.huggingface.co/models/microsoft/Phi-3-mini-4k-instruct",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+      const response = await fetch("/api/huggingface", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt,
+          parameters: {
+            max_new_tokens: 600,
+            temperature: 0.7,
           },
-          body: JSON.stringify({
-            inputs: prompt,
-            parameters: {
-              max_new_tokens: 600,
-              temperature: 0.7,
-              return_full_text: false,
-            },
-          }),
-        }
-      );
+        }),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to generate quiz");
       }
 
       const data = await response.json();
-      const quiz = data[0]?.generated_text || data.generated_text || "Failed to generate quiz";
+      const quiz = data.answer || "Failed to generate quiz";
 
       setMessages((prev) => [
         ...prev,
