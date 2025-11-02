@@ -113,14 +113,16 @@ export function ArticleAssistant({
               <ReloadIcon className="w-8 h-8 text-primary animate-spin" />
             </div>
             <h3 className="font-semibold text-base mb-2">
-              Loading Phi-3.5 Mini (400MB)
+              Loading AI Models
             </h3>
             <p className="text-sm text-muted-foreground max-w-xs mb-3">
-              {initProgress || "Initializing AI model..."}
+              {initProgress || "Initializing..."}
             </p>
-            <p className="text-xs text-muted-foreground/60">
-              Lightweight & powerful • First load ~30s
-            </p>
+            <div className="text-xs text-muted-foreground/60 space-y-1 max-w-xs">
+              <p>🔍 Semantic Search + 🦙 Llama 3.2 1B</p>
+              <p>⏱️ First load: 1-2 minutes</p>
+              <p>💾 Cached after first load</p>
+            </div>
           </div>
         )}
 
@@ -149,7 +151,7 @@ export function ArticleAssistant({
               Ask me anything about this article, request a summary, or test your knowledge with a quiz!
             </p>
             <p className="text-xs text-primary/70 mt-3">
-              ✓ Powered by Phi-3.5 Mini • 100% Local & Private
+              ✓ Llama 3.2 1B + Semantic Search • 100% Local & Private
             </p>
           </div>
         )}
@@ -236,7 +238,7 @@ export function ArticleAssistant({
           </button>
         </form>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          Powered by Phi-3.5 Mini • Runs locally in your browser
+          Llama 3.2 1B + Semantic Search • Runs locally in your browser
         </p>
       </div>
     </div>

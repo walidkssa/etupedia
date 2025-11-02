@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { CreateMLCEngine } from "@mlc-ai/web-llm";
+import { pipeline, cos_sim } from "@xenova/transformers";
 
 interface Message {
   id: string;
@@ -15,69 +16,161 @@ interface UseArticleAssistantProps {
   articleContent: string;
 }
 
+interface ArticleChunk {
+  text: string;
+  embedding?: number[];
+}
+
 export function useArticleAssistant({ articleTitle, articleContent }: UseArticleAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
-  const [initProgress, setInitProgress] = useState("Starting...");
+  const [initProgress, setInitProgress] = useState("");
 
   const engineRef = useRef<any>(null);
+  const embedderRef = useRef<any>(null);
+  const chunksRef = useRef<ArticleChunk[]>([]);
+  const initPromiseRef = useRef<Promise<void> | null>(null);
 
-  // Initialize WebLLM engine with Phi-3.5-mini
+  // Initialize models
   useEffect(() => {
+    if (initPromiseRef.current) return;
+
     let mounted = true;
 
-    async function initEngine() {
+    const initModels = async () => {
       try {
-        console.log("🚀 Initializing Phi-3.5 Mini (400MB)...");
-        setInitProgress("Initializing AI model...");
+        console.log("🚀 Initializing AI models...");
 
-        // Phi-3.5 Mini - lightweight and powerful with 128K context
-        const modelName = "Phi-3.5-mini-instruct-q4f16_1-MLC";
+        // Step 1: Initialize embeddings model for semantic search
+        setInitProgress("Loading semantic search model...");
+        console.log("📦 Loading MiniLM embeddings model (small & fast)");
 
-        console.log(`📦 Loading model: ${modelName}`);
-        setInitProgress("Downloading AI model...");
+        const embedder = await pipeline(
+          "feature-extraction",
+          "Xenova/all-MiniLM-L6-v2"
+        );
 
-        const engine = await CreateMLCEngine(modelName, {
+        if (!mounted) return;
+        embedderRef.current = embedder;
+        console.log("✅ Embeddings model loaded");
+
+        // Step 2: Process article into chunks with embeddings
+        setInitProgress("Processing article content...");
+        console.log("📄 Chunking and embedding article");
+
+        const cleanContent = articleContent
+          .replace(/<[^>]*>/g, " ")
+          .replace(/\[[0-9]+\]/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        // Split into chunks of ~500 characters
+        const chunks: ArticleChunk[] = [];
+        const chunkSize = 500;
+        for (let i = 0; i < cleanContent.length; i += chunkSize) {
+          const chunk = cleanContent.substring(i, i + chunkSize);
+          if (chunk.trim().length > 50) { // Skip very small chunks
+            chunks.push({ text: chunk.trim() });
+          }
+        }
+
+        console.log(`📊 Created ${chunks.length} chunks`);
+
+        // Generate embeddings for all chunks
+        setInitProgress(`Embedding ${chunks.length} text chunks...`);
+        for (let i = 0; i < chunks.length; i++) {
+          if (!mounted) return;
+
+          const output = await embedder(chunks[i].text, {
+            pooling: "mean",
+            normalize: true,
+          });
+          chunks[i].embedding = Array.from(output.data);
+
+          if (i % 10 === 0) {
+            setInitProgress(`Embedded ${i + 1}/${chunks.length} chunks...`);
+          }
+        }
+
+        chunksRef.current = chunks;
+        console.log("✅ All chunks embedded");
+
+        // Step 3: Initialize Llama 3.2 1B
+        if (!mounted) return;
+        setInitProgress("Loading Llama 3.2 1B...");
+        console.log("🦙 Loading Llama 3.2 1B");
+
+        const engine = await CreateMLCEngine("Llama-3.2-1B-Instruct-q4f16_1-MLC", {
           initProgressCallback: (progress) => {
             if (!mounted) return;
             console.log("📥 Progress:", progress);
 
             if (progress.text) {
               setInitProgress(progress.text);
-            } else if (progress.progress) {
+            } else if (progress.progress !== undefined) {
               const percent = Math.round(progress.progress * 100);
-              setInitProgress(`Downloading: ${percent}%`);
+              setInitProgress(`Downloading Llama 3.2: ${percent}%`);
             }
           },
         });
 
         if (!mounted) return;
-
         engineRef.current = engine;
         setIsInitializing(false);
         setInitProgress("");
-        console.log("✅ AI model ready!");
-      } catch (err: any) {
-        console.error("❌ Init error:", err);
+        console.log("✅ All models ready!");
 
+      } catch (err: any) {
+        console.error("❌ Initialization error:", err);
         if (!mounted) return;
 
-        const errorMsg = err.message || "Unknown error";
-        setError(`Failed to load AI model: ${errorMsg}`);
+        setError(err.message || "Failed to load models");
         setIsInitializing(false);
       }
-    }
+    };
 
-    initEngine();
+    initPromiseRef.current = initModels();
 
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [articleContent]);
 
-  // Send message to the AI
+  // Semantic search function
+  async function findRelevantChunks(query: string, topK: number = 5): Promise<string[]> {
+    if (!embedderRef.current || chunksRef.current.length === 0) {
+      return [];
+    }
+
+    try {
+      // Generate embedding for the query
+      const queryOutput = await embedderRef.current(query, {
+        pooling: "mean",
+        normalize: true,
+      });
+      const queryEmbedding = Array.from(queryOutput.data);
+
+      // Calculate similarity scores
+      const scores = chunksRef.current.map((chunk, idx) => ({
+        idx,
+        score: cos_sim(queryEmbedding, chunk.embedding!),
+      }));
+
+      // Sort by score and get top K
+      scores.sort((a, b) => b.score - a.score);
+      const topChunks = scores.slice(0, topK).map((s) => chunksRef.current[s.idx].text);
+
+      console.log(`🔍 Found ${topChunks.length} relevant chunks for query`);
+      return topChunks;
+    } catch (err) {
+      console.error("Semantic search error:", err);
+      return [];
+    }
+  }
+
+  // Send message with semantic search
   async function sendMessage(content: string) {
     if (!content?.trim() || isLoading || !engineRef.current) return;
 
@@ -94,47 +187,38 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     setMessages((prev) => [...prev, userMsg]);
 
     try {
-      // Clean the article content
-      const cleanContent = articleContent
-        .replace(/<[^>]*>/g, " ")
-        .replace(/\[[0-9]+\]/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
+      // Use semantic search to find relevant context
+      const relevantChunks = await findRelevantChunks(content.trim(), 5);
+      const context = relevantChunks.join("\n\n");
 
-      // Phi-3.5 has 128K context, use up to 80K chars for safety
-      const contextContent = cleanContent.length > 80000
-        ? cleanContent.substring(0, 80000) + "\n\n[Article content continues...]"
-        : cleanContent;
+      console.log(`📄 Using ${context.length} characters from semantic search`);
 
-      console.log(`📄 Using ${contextContent.length} characters of article content`);
-
-      // Create completion with strict instructions
+      // Generate response with Llama 3.2 1B
       const completion = await engineRef.current.chat.completions.create({
         messages: [
           {
             role: "system",
             content: `You are analyzing the Wikipedia article: "${articleTitle}"
 
-STRICT RULES - FOLLOW EXACTLY:
-1. Answer ONLY from the article content below
-2. If the answer is not in the article, say: "This information is not in the article"
-3. Do NOT use external knowledge
-4. Quote specific parts when answering
-5. Be accurate and concise
+STRICT RULES:
+1. Answer ONLY using the context below
+2. If the answer is not in the context, say "Not found in article"
+3. Be accurate and concise
+4. Quote specific parts when relevant
 
-ARTICLE CONTENT:
-${contextContent}`,
+RELEVANT CONTEXT:
+${context}`,
           },
           {
             role: "user",
             content: content.trim(),
           },
         ],
-        temperature: 0.2,
-        max_tokens: 500,
+        temperature: 0.3,
+        max_tokens: 400,
       });
 
-      const answer = completion.choices[0]?.message?.content || "No response generated";
+      const answer = completion.choices[0]?.message?.content || "No response";
 
       setMessages((prev) => [
         ...prev,
@@ -146,14 +230,15 @@ ${contextContent}`,
         },
       ]);
     } catch (err: any) {
-      console.error("❌ Error:", err);
+      console.error("❌ Chat error:", err);
       setError(err.message);
+
       setMessages((prev) => [
         ...prev,
         {
           id: `error-${Date.now()}`,
           role: "assistant",
-          content: "Error processing your question. Please try again.",
+          content: "Error. Please try again.",
           timestamp: Date.now(),
         },
       ]);
@@ -163,11 +248,13 @@ ${contextContent}`,
   }
 
   async function generateSummary() {
-    await sendMessage("Summarize this article in 5-7 bullet points. Use ONLY information from the article.");
+    // Use first chunks for summary
+    const topChunks = chunksRef.current.slice(0, 10).map(c => c.text).join("\n\n");
+    await sendMessage(`Based on this content, provide a 5-7 bullet point summary: ${topChunks.substring(0, 2000)}`);
   }
 
   async function generateQuiz() {
-    await sendMessage("Create 3 quiz questions based ONLY on this article. Include correct answers and explain where in the article each answer is found.");
+    await sendMessage("Create 3 quiz questions with answers based on the article.");
   }
 
   function clearChat() {
