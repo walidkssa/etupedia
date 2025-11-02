@@ -43,27 +43,46 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     const initEngine = async () => {
       try {
         console.log("🚀 Initializing Phi-3.5 Mini...");
-        setInitProgress("Starting initialization...");
+        setInitProgress("Checking WebGPU support...");
+
+        // Check WebGPU support first
+        if (!navigator.gpu) {
+          throw new Error("WebGPU is not supported in your browser. Please use Chrome 113+ or Edge 113+");
+        }
 
         const modelName = "Phi-3.5-mini-instruct-q4f16_1-MLC";
 
         console.log(`📦 Loading ${modelName}`);
-        setInitProgress("Downloading model files...");
+        setInitProgress("Initializing model (this may take 1-2 minutes on first load)...");
 
-        const engine = await CreateMLCEngine(modelName, {
-          initProgressCallback: (progress) => {
-            if (!mounted) return;
+        let lastProgressUpdate = Date.now();
+        const progressTimeout = 120000; // 2 minutes timeout
 
-            console.log("📥", progress);
+        const engine = await Promise.race([
+          CreateMLCEngine(modelName, {
+            initProgressCallback: (progress) => {
+              if (!mounted) return;
 
-            if (progress.text) {
-              setInitProgress(progress.text);
-            } else if (progress.progress !== undefined) {
-              const percent = Math.round(progress.progress * 100);
-              setInitProgress(`Loading: ${percent}%`);
-            }
-          },
-        });
+              lastProgressUpdate = Date.now();
+              console.log("📥 Progress:", progress);
+
+              if (progress.text) {
+                setInitProgress(progress.text);
+              } else if (progress.progress !== undefined) {
+                const percent = Math.round(progress.progress * 100);
+                setInitProgress(`Downloading model files: ${percent}%`);
+              }
+            },
+          }),
+          new Promise((_, reject) => {
+            const checkInterval = setInterval(() => {
+              if (Date.now() - lastProgressUpdate > progressTimeout) {
+                clearInterval(checkInterval);
+                reject(new Error("Model loading timeout. The download is taking too long. Please check your internet connection."));
+              }
+            }, 5000);
+          })
+        ]);
 
         if (!mounted) return;
 
@@ -80,10 +99,12 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         let errorMsg = "Failed to load model";
 
         if (err.message) {
-          if (err.message.includes("Failed to fetch") || err.message.includes("network")) {
+          if (err.message.includes("timeout") || err.message.includes("taking too long")) {
+            errorMsg = "Download timeout. Model files are too large. Please try again with a faster connection, or refresh and wait longer.";
+          } else if (err.message.includes("Failed to fetch") || err.message.includes("network")) {
             errorMsg = "Network error. Please check your connection and try refreshing.";
           } else if (err.message.includes("WebGPU")) {
-            errorMsg = "WebGPU not supported. Please use a modern browser (Chrome/Edge 113+).";
+            errorMsg = "WebGPU not supported. Please use Chrome 113+ or Edge 113+.";
           } else {
             errorMsg = `Error: ${err.message}`;
           }

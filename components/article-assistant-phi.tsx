@@ -113,13 +113,18 @@ export function ArticleAssistant({
               <ReloadIcon className="w-8 h-8 text-primary animate-spin" />
             </div>
             <h3 className="font-semibold text-base mb-2">
-              Loading Phi-3.5 Mini
+              Loading Phi-3.5 Mini (400MB)
             </h3>
             <p className="text-sm text-muted-foreground max-w-xs mb-3">
               {initProgress || "Initializing..."}
             </p>
-            <p className="text-xs text-muted-foreground/60">
-              First load: ~30-60s • Cached after
+            <div className="text-xs text-muted-foreground/60 space-y-1 max-w-xs">
+              <p>⏱️ First load: 1-2 minutes</p>
+              <p>💾 Cached after first load</p>
+              <p>⚡ Next loads: instant</p>
+            </div>
+            <p className="text-xs text-yellow-600 dark:text-yellow-500 mt-3 max-w-xs">
+              Please wait - downloading model files...
             </p>
           </div>
         )}
