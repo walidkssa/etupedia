@@ -30,11 +30,11 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
     async function initEngine() {
       try {
-        console.log("🚀 Initializing Llama 3.2 1B...");
+        console.log("🚀 Initializing Llama 3.2 3B...");
         setInitProgress("Initializing WebLLM...");
 
-        // Llama 3.2 1B with require-corp headers
-        let modelName = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
+        // Llama 3.2 3B - has 128K context window for full article support
+        let modelName = "Llama-3.2-3B-Instruct-q4f16_1-MLC";
 
         console.log(`📦 Attempting to load model: ${modelName}`);
         setInitProgress("Connecting to model server...");
@@ -97,20 +97,20 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     setMessages((prev) => [...prev, userMsg]);
 
     try {
-      // Clean and prepare the FULL article content (no truncation)
+      // Clean and prepare the FULL article content
       const cleanContent = articleContent
         .replace(/<[^>]*>/g, " ")
         .replace(/\[[0-9]+\]/g, "")
         .replace(/\s+/g, " ")
         .trim();
 
-      // Llama 3.2 1B supports 128K tokens (~100K characters)
-      // Use the entire article - only limit if it exceeds model capacity
-      const contextContent = cleanContent.length > 100000
-        ? cleanContent.substring(0, 100000) + "\n\n[Article truncated due to length - first 100,000 characters shown]"
+      // Llama 3.2 3B has 128K token context (~100K characters)
+      // Use entire article for comprehensive understanding
+      const contextContent = cleanContent.length > 90000
+        ? cleanContent.substring(0, 90000) + "\n\n[Article truncated - showing first 90K characters]"
         : cleanContent;
 
-      console.log(`📄 Article length: ${cleanContent.length} characters, using: ${contextContent.length} characters`);
+      console.log(`📄 Article: ${cleanContent.length} chars, using: ${contextContent.length} chars for context`);
 
       const completion = await engineRef.current.chat.completions.create({
         messages: [
