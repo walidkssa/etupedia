@@ -24,31 +24,32 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
   const engineRef = useRef<any>(null);
 
-  // Initialize WebLLM engine with Phi-3.5-mini
+  // Initialize WebLLM engine
   useEffect(() => {
     let mounted = true;
 
     async function initEngine() {
       try {
-        console.log("🚀 Initializing Phi-3.5 Mini (400MB)...");
-        setInitProgress("Initializing AI model...");
+        console.log("🚀 Initializing Llama 3.2 3B...");
+        setInitProgress("Initializing WebLLM...");
 
-        // Phi-3.5 Mini - lightweight and powerful with 128K context
-        const modelName = "Phi-3.5-mini-instruct-q4f16_1-MLC";
+        // Llama 3.2 3B - proven to work with 128K context
+        let modelName = "Llama-3.2-3B-Instruct-q4f16_1-MLC";
 
-        console.log(`📦 Loading model: ${modelName}`);
-        setInitProgress("Downloading AI model...");
+        console.log(`📦 Attempting to load model: ${modelName}`);
+        setInitProgress("Connecting to model server...");
 
         const engine = await CreateMLCEngine(modelName, {
           initProgressCallback: (progress) => {
             if (!mounted) return;
             console.log("📥 Progress:", progress);
 
+            // Show detailed progress
             if (progress.text) {
               setInitProgress(progress.text);
             } else if (progress.progress) {
               const percent = Math.round(progress.progress * 100);
-              setInitProgress(`Downloading: ${percent}%`);
+              setInitProgress(`Downloading model: ${percent}%`);
             }
           },
         });
@@ -58,14 +59,16 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         engineRef.current = engine;
         setIsInitializing(false);
         setInitProgress("");
-        console.log("✅ AI model ready!");
+        console.log("✅ Model loaded successfully!");
       } catch (err: any) {
         console.error("❌ Init error:", err);
+        console.error("Full error:", JSON.stringify(err, null, 2));
 
         if (!mounted) return;
 
+        // Show detailed error message
         const errorMsg = err.message || "Unknown error";
-        setError(`Failed to load AI model: ${errorMsg}`);
+        setError(`Failed to load model: ${errorMsg}. Try refreshing the page.`);
         setIsInitializing(false);
       }
     }
@@ -77,7 +80,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     };
   }, []);
 
-  // Send message to the AI
+  // Send message using WebLLM
   async function sendMessage(content: string) {
     if (!content?.trim() || isLoading || !engineRef.current) return;
 
@@ -94,35 +97,35 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     setMessages((prev) => [...prev, userMsg]);
 
     try {
-      // Clean the article content
+      // Clean and prepare the FULL article content
       const cleanContent = articleContent
         .replace(/<[^>]*>/g, " ")
         .replace(/\[[0-9]+\]/g, "")
         .replace(/\s+/g, " ")
         .trim();
 
-      // Phi-3.5 has 128K context, use up to 80K chars for safety
-      const contextContent = cleanContent.length > 80000
-        ? cleanContent.substring(0, 80000) + "\n\n[Article content continues...]"
+      // Llama 3.2 3B has 128K token context (~90K characters)
+      // Use entire article for comprehensive understanding
+      const contextContent = cleanContent.length > 90000
+        ? cleanContent.substring(0, 90000) + "\n\n[Article truncated - showing first 90K characters]"
         : cleanContent;
 
-      console.log(`📄 Using ${contextContent.length} characters of article content`);
+      console.log(`📄 Article: ${cleanContent.length} chars, using: ${contextContent.length} chars for context`);
 
-      // Create completion with strict instructions
       const completion = await engineRef.current.chat.completions.create({
         messages: [
           {
             role: "system",
-            content: `You are analyzing the Wikipedia article: "${articleTitle}"
+            content: `You are a helpful AI assistant analyzing the Wikipedia article "${articleTitle}".
 
-STRICT RULES - FOLLOW EXACTLY:
-1. Answer ONLY from the article content below
-2. If the answer is not in the article, say: "This information is not in the article"
-3. Do NOT use external knowledge
-4. Quote specific parts when answering
-5. Be accurate and concise
+CRITICAL RULES:
+1. Answer ONLY using information from the article below
+2. If information is NOT in the article, respond: "This information is not in the article"
+3. Do NOT use your general knowledge - ONLY use the article
+4. Quote or reference specific parts of the article in your answers
+5. Be accurate and factual - do not invent or assume information
 
-ARTICLE CONTENT:
+FULL ARTICLE CONTENT:
 ${contextContent}`,
           },
           {
@@ -130,11 +133,11 @@ ${contextContent}`,
             content: content.trim(),
           },
         ],
-        temperature: 0.2,
-        max_tokens: 500,
+        temperature: 0.3,
+        max_tokens: 600,
       });
 
-      const answer = completion.choices[0]?.message?.content || "No response generated";
+      const answer = completion.choices[0]?.message?.content || "No response";
 
       setMessages((prev) => [
         ...prev,
@@ -153,7 +156,7 @@ ${contextContent}`,
         {
           id: `error-${Date.now()}`,
           role: "assistant",
-          content: "Error processing your question. Please try again.",
+          content: "Error. Please try again.",
           timestamp: Date.now(),
         },
       ]);
@@ -163,11 +166,11 @@ ${contextContent}`,
   }
 
   async function generateSummary() {
-    await sendMessage("Summarize this article in 5-7 bullet points. Use ONLY information from the article.");
+    await sendMessage("Read the entire article carefully. Then provide a comprehensive summary in 5-7 bullet points covering ONLY the main ideas, key concepts, and important conclusions found in THIS article. Do not add external information.");
   }
 
   async function generateQuiz() {
-    await sendMessage("Create 3 quiz questions based ONLY on this article. Include correct answers and explain where in the article each answer is found.");
+    await sendMessage("Based STRICTLY on the information in THIS article, create 3 multiple-choice questions with 4 options each. Each question must be answerable using ONLY information from the article. Include the correct answer and explain WHERE in the article this information can be found.");
   }
 
   function clearChat() {
