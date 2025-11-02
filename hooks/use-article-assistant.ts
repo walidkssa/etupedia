@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import * as webllm from "@mlc-ai/web-llm";
+import { useState, useEffect } from "react";
+import { aiEngine, type EngineStatus } from "@/lib/ai-engine";
 
 interface Message {
   id: string;
@@ -19,79 +19,40 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [initProgress, setInitProgress] = useState("");
+  const [engineStatus, setEngineStatus] = useState<EngineStatus>({
+    status: "initializing",
+    message: "Starting AI engine...",
+  });
 
-  const engineRef = useRef<webllm.MLCEngine | null>(null);
-
-  // Initialize model once
+  // Subscribe to engine status updates
   useEffect(() => {
-    let mounted = true;
+    console.log("🔌 Subscribing to AI Engine status");
 
-    async function init() {
-      if (typeof window === "undefined") return;
+    const unsubscribe = aiEngine.subscribe((status) => {
+      console.log("📡 Engine status update:", status);
+      setEngineStatus(status);
 
-      console.log("🚀 Starting model initialization");
-
-      if (!("gpu" in navigator)) {
-        if (mounted) {
-          setError("WebGPU not supported. Use Chrome 113+");
-          setIsInitializing(false);
-        }
-        return;
+      if (status.status === "error") {
+        setError(status.message);
+      } else {
+        setError(null);
       }
+    });
 
-      try {
-        if (mounted) setInitProgress("Checking WebGPU...");
+    // Initialize engine
+    aiEngine.initialize().catch((err) => {
+      console.error("❌ Failed to initialize engine:", err);
+      setError(err.message || "Failed to initialize AI engine");
+    });
 
-        const adapter = await (navigator.gpu as any).requestAdapter();
-        if (!adapter) throw new Error("No WebGPU adapter");
-
-        console.log("✅ WebGPU available");
-
-        if (mounted) setInitProgress("Loading Phi-3.5 Mini...");
-
-        const engine = await webllm.CreateMLCEngine(
-          "Phi-3.5-mini-instruct-q4f16_1-MLC",
-          {
-            initProgressCallback: (report) => {
-              if (!mounted) return;
-              console.log("Progress:", report);
-              if (report.text) {
-                setInitProgress(report.text);
-              } else if (report.progress) {
-                setInitProgress(`Loading: ${Math.round(report.progress * 100)}%`);
-              }
-            },
-          }
-        );
-
-        if (!mounted) return;
-
-        engineRef.current = engine;
-        setIsInitializing(false);
-        setInitProgress("");
-        console.log("✅ MODEL LOADED SUCCESSFULLY");
-        console.log("Engine:", engineRef.current);
-
-      } catch (err: any) {
-        console.error("❌ Init error:", err);
-        if (mounted) {
-          setError(err.message || "Failed to load model");
-          setIsInitializing(false);
-        }
-      }
-    }
-
-    init();
-    return () => { mounted = false; };
+    return unsubscribe;
   }, []);
 
-  // Send message - simple async function
+  // Send message
   async function sendMessage(content: string) {
-    console.log("\n=== SEND MESSAGE ===");
+    console.log("\n=== 📤 SEND MESSAGE ===");
     console.log("Content:", content);
-    console.log("Engine exists:", !!engineRef.current);
+    console.log("Engine ready:", aiEngine.isReady());
     console.log("Is loading:", isLoading);
 
     if (!content?.trim()) {
@@ -99,18 +60,18 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
       return;
     }
 
-    if (!engineRef.current) {
-      console.log("❌ No engine");
-      setError("Model still loading...");
+    if (!aiEngine.isReady()) {
+      console.log("❌ Engine not ready");
+      setError("AI engine is still loading. Please wait...");
       return;
     }
 
     if (isLoading) {
-      console.log("❌ Already processing");
+      console.log("❌ Already processing another message");
       return;
     }
 
-    console.log("✅ Starting processing");
+    console.log("✅ Starting message processing");
 
     setIsLoading(true);
     setError(null);
@@ -123,9 +84,10 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
       timestamp: Date.now(),
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    setMessages((prev) => [...prev, userMsg]);
 
     try {
+      // Clean article content
       const cleanContent = articleContent
         .replace(/<[^>]*>/g, " ")
         .replace(/\[[0-9]+\]/g, "")
@@ -141,18 +103,18 @@ Content: ${cleanContent}
 
 Provide clear, helpful answers.`;
 
-      console.log("🤖 Calling AI model...");
+      console.log("🤖 Calling AI engine...");
 
-      const response = await engineRef.current.chat.completions.create({
-        messages: [
+      const answer = await aiEngine.chat(
+        [
           { role: "system", content: systemPrompt },
-          { role: "user", content: content.trim() }
+          { role: "user", content: content.trim() },
         ],
-        temperature: 0.5,
-        max_tokens: 1000,
-      });
-
-      const answer = response.choices[0]?.message?.content || "No response";
+        {
+          temperature: 0.5,
+          max_tokens: 1000,
+        }
+      );
 
       console.log("✅ Got response:", answer.substring(0, 100));
 
@@ -164,8 +126,7 @@ Provide clear, helpful answers.`;
         timestamp: Date.now(),
       };
 
-      setMessages(prev => [...prev, assistantMsg]);
-
+      setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
       console.error("❌ Error:", err);
       setError(err.message || "Error generating response");
@@ -177,25 +138,33 @@ Provide clear, helpful answers.`;
         timestamp: Date.now(),
       };
 
-      setMessages(prev => [...prev, errorMsg]);
+      setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setIsLoading(false);
-      console.log("=== DONE ===\n");
+      console.log("=== ✅ MESSAGE PROCESSING COMPLETE ===\n");
     }
   }
 
   // Generate summary
   async function generateSummary() {
-    if (!engineRef.current || isLoading) return;
+    console.log("📝 Generating summary");
+
+    if (!aiEngine.isReady() || isLoading) {
+      console.log("❌ Cannot generate summary - engine not ready or already loading");
+      return;
+    }
 
     setIsLoading(true);
 
-    setMessages(prev => [...prev, {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: "Summarize this article",
-      timestamp: Date.now(),
-    }]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `user-${Date.now()}`,
+        role: "user",
+        content: "Summarize this article",
+        timestamp: Date.now(),
+      },
+    ]);
 
     try {
       const cleanContent = articleContent
@@ -205,32 +174,37 @@ Provide clear, helpful answers.`;
         .trim()
         .substring(0, 4000);
 
-      const response = await engineRef.current.chat.completions.create({
-        messages: [
+      const summary = await aiEngine.chat(
+        [
           { role: "system", content: "Provide a concise summary in bullet points." },
-          { role: "user", content: `Article: "${articleTitle}"\n\n${cleanContent}` }
+          { role: "user", content: `Article: "${articleTitle}"\n\n${cleanContent}` },
         ],
-        temperature: 0.3,
-        max_tokens: 500,
-      });
+        {
+          temperature: 0.3,
+          max_tokens: 500,
+        }
+      );
 
-      const summary = response.choices[0]?.message?.content || "Could not generate summary";
-
-      setMessages(prev => [...prev, {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content: summary,
-        timestamp: Date.now(),
-      }]);
-
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          content: summary,
+          timestamp: Date.now(),
+        },
+      ]);
     } catch (err) {
-      console.error(err);
-      setMessages(prev => [...prev, {
-        id: `error-${Date.now()}`,
-        role: "assistant",
-        content: "Failed to generate summary.",
-        timestamp: Date.now(),
-      }]);
+      console.error("❌ Summary error:", err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error-${Date.now()}`,
+          role: "assistant",
+          content: "Failed to generate summary.",
+          timestamp: Date.now(),
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -238,16 +212,24 @@ Provide clear, helpful answers.`;
 
   // Generate quiz
   async function generateQuiz() {
-    if (!engineRef.current || isLoading) return;
+    console.log("📝 Generating quiz");
+
+    if (!aiEngine.isReady() || isLoading) {
+      console.log("❌ Cannot generate quiz - engine not ready or already loading");
+      return;
+    }
 
     setIsLoading(true);
 
-    setMessages(prev => [...prev, {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: "Generate quiz questions",
-      timestamp: Date.now(),
-    }]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `user-${Date.now()}`,
+        role: "user",
+        content: "Generate quiz questions",
+        timestamp: Date.now(),
+      },
+    ]);
 
     try {
       const cleanContent = articleContent
@@ -257,38 +239,44 @@ Provide clear, helpful answers.`;
         .trim()
         .substring(0, 4000);
 
-      const response = await engineRef.current.chat.completions.create({
-        messages: [
+      const quiz = await aiEngine.chat(
+        [
           { role: "system", content: "Create 3 multiple-choice questions about the article." },
-          { role: "user", content: `Article: "${articleTitle}"\n\n${cleanContent}` }
+          { role: "user", content: `Article: "${articleTitle}"\n\n${cleanContent}` },
         ],
-        temperature: 0.5,
-        max_tokens: 800,
-      });
+        {
+          temperature: 0.5,
+          max_tokens: 800,
+        }
+      );
 
-      const quiz = response.choices[0]?.message?.content || "Could not generate quiz";
-
-      setMessages(prev => [...prev, {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content: quiz,
-        timestamp: Date.now(),
-      }]);
-
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          content: quiz,
+          timestamp: Date.now(),
+        },
+      ]);
     } catch (err) {
-      console.error(err);
-      setMessages(prev => [...prev, {
-        id: `error-${Date.now()}`,
-        role: "assistant",
-        content: "Failed to generate quiz.",
-        timestamp: Date.now(),
-      }]);
+      console.error("❌ Quiz error:", err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error-${Date.now()}`,
+          role: "assistant",
+          content: "Failed to generate quiz.",
+          timestamp: Date.now(),
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
   }
 
   function clearChat() {
+    console.log("🗑️ Clearing chat");
     setMessages([]);
     setError(null);
   }
@@ -296,8 +284,8 @@ Provide clear, helpful answers.`;
   return {
     messages,
     isLoading,
-    isInitializing,
-    initProgress,
+    isInitializing: engineStatus.status === "initializing",
+    initProgress: engineStatus.message,
     error,
     sendMessage,
     generateSummary,
