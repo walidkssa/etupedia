@@ -25,52 +25,51 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
   const engineRef = useRef<webllm.MLCEngine | null>(null);
   const isInitRef = useRef(false);
 
-  // Initialize Phi-4 on mount
+  // Initialize model on mount
   useEffect(() => {
     if (isInitRef.current) return;
     isInitRef.current = true;
 
     async function initEngine() {
       try {
-        console.log("🚀 Starting Phi-4 initialization...");
+        console.log("🚀 Starting model initialization...");
         setIsInitializing(true);
-        setInitProgress("Loading Phi-4 model...");
+        setError(null);
 
-        // Try Phi-4-mini first, fallback to Phi-3.5 if not available
-        let modelId = "Phi-4-mini-instruct-q4f16_1-MLC";
+        // Use Phi-3.5-mini as it's the most stable
+        const modelId = "Phi-3.5-mini-instruct-q4f16_1-MLC";
 
-        try {
-          const engine = await webllm.CreateMLCEngine(
-            modelId,
-            {
-              initProgressCallback: (progress) => {
-                console.log("📦 Progress:", progress);
-                setInitProgress(progress.text || "Loading...");
-              },
+        console.log(`📦 Loading model: ${modelId}`);
+        setInitProgress(`Initializing ${modelId}...`);
+
+        const engine = await webllm.CreateMLCEngine(modelId, {
+          initProgressCallback: (progress) => {
+            console.log("Progress:", progress);
+
+            // Update progress display - keep initializing true during download
+            if (progress.progress !== undefined) {
+              const percent = Math.round(progress.progress * 100);
+              setInitProgress(`Downloading model: ${percent}%`);
+              setIsInitializing(true); // Keep showing loading screen
+            } else if (progress.text) {
+              setInitProgress(progress.text);
+              setIsInitializing(true); // Keep showing loading screen
             }
-          );
-          engineRef.current = engine;
-        } catch (err) {
-          console.log("⚠️ Phi-4-mini not available, trying Phi-3.5...");
-          modelId = "Phi-3.5-mini-instruct-q4f16_1-MLC";
-          const engine = await webllm.CreateMLCEngine(
-            modelId,
-            {
-              initProgressCallback: (progress) => {
-                console.log("📦 Progress:", progress);
-                setInitProgress(progress.text || "Loading...");
-              },
-            }
-          );
-          engineRef.current = engine;
-        }
+          },
+        });
 
-        console.log(`✅ Model loaded successfully: ${modelId}`);
-        setInitProgress("Ready!");
+        engineRef.current = engine;
+        console.log("✅ Model loaded successfully!");
+        setInitProgress("Model ready!");
+
+        // Wait a bit before hiding loading screen
+        await new Promise(resolve => setTimeout(resolve, 1000));
         setIsInitializing(false);
+
       } catch (err: any) {
         console.error("❌ Failed to load model:", err);
-        setError("Failed to initialize AI model");
+        setError(`Failed to load AI model: ${err.message}`);
+        setInitProgress("Failed to load model");
         setIsInitializing(false);
       }
     }
@@ -78,29 +77,25 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     initEngine();
   }, []);
 
-  // Send message using Phi-4
+  // Send message
   async function sendMessage(content: string) {
-    console.log("\n=== 📤 SEND MESSAGE (Phi-4) ===");
-    console.log("Content:", content);
-
     if (!content?.trim()) {
       console.log("❌ Empty content");
       return;
     }
 
     if (isLoading || isInitializing) {
-      console.log("❌ Already processing or initializing");
+      console.log("❌ Busy or initializing");
       return;
     }
 
     if (!engineRef.current) {
-      console.log("❌ Engine not initialized");
-      setError("AI model not ready");
+      console.log("❌ Engine not ready");
+      setError("AI model not ready. Please wait for initialization.");
       return;
     }
 
-    console.log("✅ Starting message processing with Phi-4");
-
+    console.log("\n=== 📤 Sending message ===");
     setIsLoading(true);
     setError(null);
 
@@ -121,31 +116,28 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         .replace(/\[[0-9]+\]/g, "")
         .replace(/\s+/g, " ")
         .trim()
-        .substring(0, 3000);
+        .substring(0, 2500);
 
-      const systemPrompt = `You are analyzing this encyclopedia article:
-
-Title: "${articleTitle}"
-
-Content:
-${cleanContent}
-
-Provide clear, concise answers based on the article.`;
-
-      console.log("🤖 Generating response with Phi-4...");
+      console.log("🤖 Generating response...");
 
       const completion = await engineRef.current.chat.completions.create({
         messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: content.trim() }
+          {
+            role: "system",
+            content: `You are analyzing an encyclopedia article titled "${articleTitle}". Provide clear, concise answers based on the article content.`
+          },
+          {
+            role: "user",
+            content: `Article content: ${cleanContent}\n\nQuestion: ${content.trim()}`
+          }
         ],
         temperature: 0.7,
-        max_tokens: 1000,
+        max_tokens: 800,
       });
 
       const answer = completion.choices[0]?.message?.content || "No response generated";
 
-      console.log("✅ Got response from Phi-4:", answer.substring(0, 100));
+      console.log("✅ Response received:", answer.substring(0, 100));
 
       // Add assistant message
       const assistantMsg: Message = {
@@ -156,6 +148,7 @@ Provide clear, concise answers based on the article.`;
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
+
     } catch (err: any) {
       console.error("❌ Error:", err);
       setError(err.message || "Error generating response");
@@ -170,16 +163,12 @@ Provide clear, concise answers based on the article.`;
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setIsLoading(false);
-      console.log("=== ✅ MESSAGE PROCESSING COMPLETE ===\n");
     }
   }
 
-  // Generate summary using Phi-4
+  // Generate summary
   async function generateSummary() {
-    console.log("📝 Generating summary with Phi-4");
-
     if (isLoading || isInitializing || !engineRef.current) {
-      console.log("❌ Cannot generate summary - not ready");
       return;
     }
 
@@ -201,25 +190,21 @@ Provide clear, concise answers based on the article.`;
         .replace(/\[[0-9]+\]/g, "")
         .replace(/\s+/g, " ")
         .trim()
-        .substring(0, 4000);
+        .substring(0, 3500);
 
       const completion = await engineRef.current.chat.completions.create({
         messages: [
-          { role: "system", content: "You are a helpful assistant that creates concise summaries." },
+          {
+            role: "system",
+            content: "You are a helpful assistant that creates concise summaries."
+          },
           {
             role: "user",
-            content: `Summarize this encyclopedia article in 3-5 clear bullet points:
-
-Title: "${articleTitle}"
-
-Content:
-${cleanContent}
-
-Provide a concise, informative summary.`
+            content: `Summarize this encyclopedia article titled "${articleTitle}" in 3-5 clear bullet points:\n\n${cleanContent}`
           }
         ],
         temperature: 0.5,
-        max_tokens: 800,
+        max_tokens: 600,
       });
 
       const summary = completion.choices[0]?.message?.content || "Failed to generate summary";
@@ -249,12 +234,9 @@ Provide a concise, informative summary.`
     }
   }
 
-  // Generate quiz using Phi-4
+  // Generate quiz
   async function generateQuiz() {
-    console.log("📝 Generating quiz with Phi-4");
-
     if (isLoading || isInitializing || !engineRef.current) {
-      console.log("❌ Cannot generate quiz - not ready");
       return;
     }
 
@@ -276,30 +258,21 @@ Provide a concise, informative summary.`
         .replace(/\[[0-9]+\]/g, "")
         .replace(/\s+/g, " ")
         .trim()
-        .substring(0, 4000);
+        .substring(0, 3500);
 
       const completion = await engineRef.current.chat.completions.create({
         messages: [
-          { role: "system", content: "You are a helpful assistant that creates educational quizzes." },
+          {
+            role: "system",
+            content: "You are a helpful assistant that creates educational quizzes."
+          },
           {
             role: "user",
-            content: `Create 3 multiple-choice questions about this article:
-
-Title: "${articleTitle}"
-
-Content:
-${cleanContent}
-
-Format each question with:
-- The question
-- 4 options (A, B, C, D)
-- Indicate the correct answer
-
-Make questions testing understanding of key concepts.`
+            content: `Create 3 multiple-choice questions about this article titled "${articleTitle}":\n\n${cleanContent}\n\nFormat each question with:\n- The question\n- 4 options (A, B, C, D)\n- Indicate the correct answer`
           }
         ],
         temperature: 0.7,
-        max_tokens: 1200,
+        max_tokens: 800,
       });
 
       const quiz = completion.choices[0]?.message?.content || "Failed to generate quiz";
@@ -330,7 +303,6 @@ Make questions testing understanding of key concepts.`
   }
 
   function clearChat() {
-    console.log("🗑️ Clearing chat");
     setMessages([]);
     setError(null);
   }
