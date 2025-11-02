@@ -11,12 +11,6 @@ import GPT4js from 'gpt4js';
 class GPT4FreeEngine {
   private static instance: GPT4FreeEngine;
   private gpt4: any;
-  private providers = [
-    { provider: 'Blackbox', model: '' },
-    { provider: 'ChatgptFree', model: '' },
-    { provider: 'DeepInfra', model: 'meta-llama/Meta-Llama-3-8B-Instruct' },
-  ];
-  private currentProviderIndex = 0;
 
   private constructor() {
     this.gpt4 = new GPT4js();
@@ -30,37 +24,25 @@ class GPT4FreeEngine {
   }
 
   /**
-   * Try providers with automatic fallback
+   * Use GPT4js with automatic provider/model selection
    */
-  private async tryProviders(messages: any[]): Promise<string> {
-    const startIndex = this.currentProviderIndex;
+  private async askGPT(messages: any[]): Promise<string> {
+    try {
+      console.log('🤖 GPT4Free: Using automatic provider/model selection...');
 
-    for (let i = 0; i < this.providers.length; i++) {
-      const providerIndex = (startIndex + i) % this.providers.length;
-      const { provider, model } = this.providers[providerIndex];
+      // Let gpt4js choose the best provider and model automatically
+      const response = await this.gpt4.chat(messages);
 
-      try {
-        console.log(`🔄 Trying provider: ${provider}`);
-
-        const options = {
-          provider,
-          model: model || undefined,
-        };
-
-        const response = await this.gpt4.chat(messages, options);
-
-        if (response && typeof response === 'string' && response.trim()) {
-          console.log(`✅ Success with ${provider}`);
-          this.currentProviderIndex = providerIndex;
-          return response.trim();
-        }
-      } catch (error: any) {
-        console.error(`❌ ${provider} failed:`, error.message);
-        continue;
+      if (response && typeof response === 'string' && response.trim()) {
+        console.log('✅ Success with GPT4Free');
+        return response.trim();
       }
-    }
 
-    throw new Error('All GPT4Free providers failed. Please try again.');
+      throw new Error('Empty response from GPT4Free');
+    } catch (error: any) {
+      console.error('❌ GPT4Free error:', error.message);
+      throw new Error('GPT4Free failed. Please try again.');
+    }
   }
 
   /**
@@ -82,13 +64,11 @@ User Question: ${userQuestion}
 
 Provide a clear, concise answer based on the article.`;
 
-    console.log('🤖 GPT4Free: Sending chat request...');
-
     const messages = [
       { role: 'user', content: contextPrompt }
     ];
 
-    return await this.tryProviders(messages);
+    return await this.askGPT(messages);
   }
 
   /**
@@ -107,13 +87,11 @@ ${articleContent.substring(0, 4000)}
 
 Provide a concise, informative summary.`;
 
-    console.log('📝 GPT4Free: Generating summary...');
-
     const messages = [
       { role: 'user', content: prompt }
     ];
 
-    return await this.tryProviders(messages);
+    return await this.askGPT(messages);
   }
 
   /**
@@ -137,20 +115,11 @@ Format each question with:
 
 Make questions testing understanding of key concepts.`;
 
-    console.log('📝 GPT4Free: Generating quiz...');
-
     const messages = [
       { role: 'user', content: prompt }
     ];
 
-    return await this.tryProviders(messages);
-  }
-
-  /**
-   * Get current provider name
-   */
-  getCurrentProvider(): string {
-    return this.providers[this.currentProviderIndex]?.provider || 'Unknown';
+    return await this.askGPT(messages);
   }
 }
 
