@@ -106,7 +106,23 @@ export function ArticleAssistant({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* No initialization needed with GPT4Free */}
+        {/* Model loading */}
+        {isInitializing && (
+          <div className="flex flex-col items-center justify-center h-full text-center p-6">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <ReloadIcon className="w-8 h-8 text-primary animate-spin" />
+            </div>
+            <h3 className="font-semibold text-base mb-2">
+              Loading Phi-4 Model...
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-xs mb-3">
+              {initProgress || "Initializing AI model..."}
+            </p>
+            <p className="text-xs text-muted-foreground/60">
+              This may take a minute on first load
+            </p>
+          </div>
+        )}
 
         {/* Welcome message */}
         {!isInitializing && messages.length === 0 && (
@@ -133,7 +149,7 @@ export function ArticleAssistant({
               Ask me anything about this article, request a summary, or test your knowledge with a quiz!
             </p>
             <p className="text-xs text-primary/70 mt-3">
-              ✓ Powered by GPT4Free • Free & Unlimited
+              ✓ Powered by Phi-4 • 100% Local & Private
             </p>
           </div>
         )}
@@ -220,7 +236,7 @@ export function ArticleAssistant({
           </button>
         </form>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          Powered by GPT4Free • Multiple AI providers • 100% free
+          Powered by Phi-4 • Runs locally in your browser • 100% private
         </p>
       </div>
     </div>
