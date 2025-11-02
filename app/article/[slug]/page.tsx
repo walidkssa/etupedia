@@ -225,8 +225,8 @@ export default function ArticlePage() {
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between gap-4">
-            {/* Left side: Sidebar toggle + Logo (grouped on desktop) */}
-            <div className="flex items-center gap-3">
+            {/* Left side: Sidebar toggle + Search bar (grouped on mobile) */}
+            <div className="flex items-center gap-2 flex-1">
               {/* Sidebar toggle button - always visible */}
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -248,11 +248,11 @@ export default function ArticlePage() {
               >
                 Etupedia
               </Link>
-            </div>
 
-            {/* Search bar in header */}
-            <div className="flex-1 max-w-[25%] sm:max-w-none lg:max-w-xl">
-              <SearchCommand placeholder="Search" compact />
+              {/* Search bar in header - close to hamburger on mobile */}
+              <div className="flex-1 max-w-[40%] sm:max-w-none lg:max-w-xl">
+                <SearchCommand placeholder="Search" compact />
+              </div>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
