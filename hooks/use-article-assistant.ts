@@ -30,10 +30,10 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
     async function initEngine() {
       try {
-        console.log("🚀 Initializing Llama 3.2 1B...");
+        console.log("🚀 Initializing Llama 3.2 3B...");
         setInitProgress("Downloading AI model...");
 
-        const engine = await CreateMLCEngine("Llama-3.2-1B-Instruct-q4f16_1-MLC", {
+        const engine = await CreateMLCEngine("Llama-3.2-3B-Instruct-q4f16_1-MLC", {
           initProgressCallback: (progress) => {
             if (!mounted) return;
             console.log("📥 Progress:", progress);
@@ -86,21 +86,31 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         .replace(/\[[0-9]+\]/g, "")
         .replace(/\s+/g, " ")
         .trim()
-        .substring(0, 1500);
+        .substring(0, 3000); // Increased context for 3B model
 
       const completion = await engineRef.current.chat.completions.create({
         messages: [
           {
             role: "system",
-            content: `You are analyzing "${articleTitle}". Article: ${cleanContent}`,
+            content: `You are an AI assistant specialized in analyzing academic articles. You are currently analyzing the article titled "${articleTitle}".
+
+Your role is to:
+- Answer questions ONLY based on the article content provided below
+- Provide accurate, detailed explanations from the article
+- If the answer is not in the article, say "This information is not covered in the article"
+- Always reference specific parts of the article when answering
+- Be concise but comprehensive
+
+Article content:
+${cleanContent}`,
           },
           {
             role: "user",
             content: content.trim(),
           },
         ],
-        temperature: 0.7,
-        max_tokens: 400,
+        temperature: 0.6,
+        max_tokens: 500,
       });
 
       const answer = completion.choices[0]?.message?.content || "No response";
@@ -132,11 +142,11 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
   }
 
   async function generateSummary() {
-    await sendMessage("Summarize this article in 3-5 bullet points");
+    await sendMessage("Based on the article content, provide a comprehensive summary in 5-7 bullet points covering the main ideas, key concepts, and important conclusions.");
   }
 
   async function generateQuiz() {
-    await sendMessage("Create 3 multiple-choice questions with 4 options each and indicate correct answers");
+    await sendMessage("Based strictly on the article content, create 3 multiple-choice questions with 4 options each. Include the correct answer and a brief explanation referencing the article.");
   }
 
   function clearChat() {
