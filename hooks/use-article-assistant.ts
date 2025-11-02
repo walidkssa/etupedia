@@ -97,36 +97,42 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     setMessages((prev) => [...prev, userMsg]);
 
     try {
+      // Clean and prepare the FULL article content (no truncation)
       const cleanContent = articleContent
         .replace(/<[^>]*>/g, " ")
         .replace(/\[[0-9]+\]/g, "")
         .replace(/\s+/g, " ")
-        .trim()
-        .substring(0, 3000); // Increased context for 3B model
+        .trim();
+
+      // Llama 3.2 1B supports 128K context - we can use the full article
+      // Only limit if article is extremely long (>50K chars)
+      const contextContent = cleanContent.length > 50000
+        ? cleanContent.substring(0, 50000) + "..."
+        : cleanContent;
 
       const completion = await engineRef.current.chat.completions.create({
         messages: [
           {
             role: "system",
-            content: `You are an AI assistant specialized in analyzing academic articles. You are currently analyzing the article titled "${articleTitle}".
+            content: `You are a helpful AI assistant analyzing the Wikipedia article "${articleTitle}".
 
-Your role is to:
-- Answer questions ONLY based on the article content provided below
-- Provide accurate, detailed explanations from the article
-- If the answer is not in the article, say "This information is not covered in the article"
-- Always reference specific parts of the article when answering
-- Be concise but comprehensive
+CRITICAL RULES:
+1. Answer ONLY using information from the article below
+2. If information is NOT in the article, respond: "This information is not in the article"
+3. Do NOT use your general knowledge - ONLY use the article
+4. Quote or reference specific parts of the article in your answers
+5. Be accurate and factual - do not invent or assume information
 
-Article content:
-${cleanContent}`,
+FULL ARTICLE CONTENT:
+${contextContent}`,
           },
           {
             role: "user",
             content: content.trim(),
           },
         ],
-        temperature: 0.6,
-        max_tokens: 500,
+        temperature: 0.3,
+        max_tokens: 600,
       });
 
       const answer = completion.choices[0]?.message?.content || "No response";
@@ -158,11 +164,11 @@ ${cleanContent}`,
   }
 
   async function generateSummary() {
-    await sendMessage("Based on the article content, provide a comprehensive summary in 5-7 bullet points covering the main ideas, key concepts, and important conclusions.");
+    await sendMessage("Read the entire article carefully. Then provide a comprehensive summary in 5-7 bullet points covering ONLY the main ideas, key concepts, and important conclusions found in THIS article. Do not add external information.");
   }
 
   async function generateQuiz() {
-    await sendMessage("Based strictly on the article content, create 3 multiple-choice questions with 4 options each. Include the correct answer and a brief explanation referencing the article.");
+    await sendMessage("Based STRICTLY on the information in THIS article, create 3 multiple-choice questions with 4 options each. Each question must be answerable using ONLY information from the article. Include the correct answer and explain WHERE in the article this information can be found.");
   }
 
   function clearChat() {
