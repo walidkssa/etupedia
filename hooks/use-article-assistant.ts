@@ -25,6 +25,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
   const [initProgress, setInitProgress] = useState("");
 
   const engineRef = useRef<webllm.MLCEngine | null>(null);
+  const isLoadingRef = useRef(false);
 
   // Initialize Mistral 7B Instruct model with optimized configuration
   useEffect(() => {
@@ -121,21 +122,28 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
   // Send a message
   const sendMessage = useCallback(async (content: string, enableSearch?: boolean) => {
-    console.log("sendMessage called", { content, isLoading, hasEngine: !!engineRef.current, isInitializing });
+    console.log("sendMessage called", {
+      content,
+      isLoading,
+      hasEngine: !!engineRef.current,
+      isInitializing,
+      engineRefValue: engineRef.current
+    });
 
     if (!content.trim()) {
       console.log("Content is empty");
       return;
     }
 
-    if (isLoading) {
-      console.log("Already loading");
+    // Check engine FIRST before isLoading check
+    if (!engineRef.current) {
+      console.log("Engine not ready - engineRef.current is:", engineRef.current);
+      setError("AI model is still loading. Please wait...");
       return;
     }
 
-    if (!engineRef.current) {
-      console.log("Engine not ready");
-      setError("AI model is still loading. Please wait...");
+    if (isLoadingRef.current) {
+      console.log("Already loading");
       return;
     }
 
@@ -155,6 +163,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    isLoadingRef.current = true;
     setIsLoading(true);
     setError(null);
 
@@ -235,14 +244,16 @@ Please provide a comprehensive and helpful answer to the user's question.`;
 
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
+      isLoadingRef.current = false;
       setIsLoading(false);
     }
-  }, [isLoading, articleTitle, articleContent, webSearchEnabled]);
+  }, [articleTitle, articleContent, webSearchEnabled]);
 
   // Generate summary using Mistral 7B
   const generateSummary = useCallback(async () => {
-    if (isLoading || !engineRef.current || !articleContent || !articleTitle) return;
+    if (isLoadingRef.current || !engineRef.current || !articleContent || !articleTitle) return;
 
+    isLoadingRef.current = true;
     setIsLoading(true);
     setError(null);
 
@@ -301,14 +312,16 @@ Please provide a comprehensive and helpful answer to the user's question.`;
 
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
+      isLoadingRef.current = false;
       setIsLoading(false);
     }
-  }, [isLoading, articleTitle, articleContent]);
+  }, [articleTitle, articleContent]);
 
   // Generate quiz using Mistral 7B
   const generateQuiz = useCallback(async () => {
-    if (isLoading || !engineRef.current || !articleContent || !articleTitle) return;
+    if (isLoadingRef.current || !engineRef.current || !articleContent || !articleTitle) return;
 
+    isLoadingRef.current = true;
     setIsLoading(true);
     setError(null);
 
@@ -367,9 +380,10 @@ Please provide a comprehensive and helpful answer to the user's question.`;
 
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
+      isLoadingRef.current = false;
       setIsLoading(false);
     }
-  }, [isLoading, articleTitle, articleContent]);
+  }, [articleTitle, articleContent]);
 
   // Clear chat
   const clearChat = useCallback(() => {
