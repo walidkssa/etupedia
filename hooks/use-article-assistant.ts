@@ -30,11 +30,11 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
     async function initEngine() {
       try {
-        console.log("🚀 Initializing Llama 3.2 3B...");
+        console.log("🚀 Initializing Qwen2.5 1.5B...");
         setInitProgress("Initializing WebLLM...");
 
-        // Llama 3.2 3B - has 128K context window for full article support
-        let modelName = "Llama-3.2-3B-Instruct-q4f16_1-MLC";
+        // Qwen2.5 1.5B - powerful 900MB model with 32K context
+        let modelName = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
 
         console.log(`📦 Attempting to load model: ${modelName}`);
         setInitProgress("Connecting to model server...");
@@ -104,10 +104,10 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         .replace(/\s+/g, " ")
         .trim();
 
-      // Llama 3.2 3B has 128K token context (~100K characters)
-      // Use entire article for comprehensive understanding
-      const contextContent = cleanContent.length > 90000
-        ? cleanContent.substring(0, 90000) + "\n\n[Article truncated - showing first 90K characters]"
+      // Qwen2.5 1.5B has 32K token context (~24K characters)
+      // Use as much article as possible within context limit
+      const contextContent = cleanContent.length > 24000
+        ? cleanContent.substring(0, 24000) + "\n\n[Article truncated - showing first 24K characters]"
         : cleanContent;
 
       console.log(`📄 Article: ${cleanContent.length} chars, using: ${contextContent.length} chars for context`);
