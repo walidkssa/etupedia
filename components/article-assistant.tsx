@@ -195,15 +195,45 @@ export function ArticleAssistant({
                   : "bg-muted"
               }`}
             >
-              <p className="text-sm whitespace-pre-wrap break-words">
-                {message.content}
-              </p>
-              <p className="text-[10px] opacity-60 mt-1">
-                {new Date(message.timestamp).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
+              {message.webResults ? (
+                // Web search results display
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                    🌐 Web Search Results
+                  </h3>
+                  {message.webResults.map((result, idx) => (
+                    <div key={idx} className="border-t border-border/50 pt-3 first:border-t-0 first:pt-0">
+                      <h4 className="font-medium text-sm mb-1">
+                        {idx + 1}. {result.title}
+                      </h4>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {result.summary}
+                      </p>
+                      <a
+                        href={result.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline flex items-center gap-1"
+                      >
+                        🔗 {new URL(result.url).hostname}
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                // Normal message display
+                <>
+                  <p className="text-sm whitespace-pre-wrap break-words">
+                    {message.content}
+                  </p>
+                  <p className="text-[10px] opacity-60 mt-1">
+                    {new Date(message.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </>
+              )}
             </div>
           </div>
         ))}

@@ -3,11 +3,18 @@
 import { useState, useEffect, useRef } from "react";
 import { CreateMLCEngine } from "@mlc-ai/web-llm";
 
+interface WebSearchResult {
+  title: string;
+  summary: string;
+  url: string;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+  webResults?: WebSearchResult[];
 }
 
 interface UseArticleAssistantProps {
@@ -200,17 +207,28 @@ ${contextContent}`,
       const { webSearchResults } = await response.json();
 
       // Display web search results directly (NO LLM processing)
-      const answer = webSearchResults || "No web results found.";
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          content: answer,
-          timestamp: Date.now(),
-        },
-      ]);
+      if (webSearchResults && Array.isArray(webSearchResults)) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `assistant-${Date.now()}`,
+            role: "assistant",
+            content: "Web Search Results",
+            timestamp: Date.now(),
+            webResults: webSearchResults,
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `assistant-${Date.now()}`,
+            role: "assistant",
+            content: "No web results found.",
+            timestamp: Date.now(),
+          },
+        ]);
+      }
 
     } catch (err: any) {
       console.error("❌ Web search error:", err);
