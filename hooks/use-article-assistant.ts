@@ -30,10 +30,10 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
     async function initEngine() {
       try {
-        console.log("🚀 Initializing Phi-3.5 Mini...");
+        console.log("🚀 Initializing Qwen2.5-3B...");
         setInitProgress("Downloading AI model...");
 
-        const engine = await CreateMLCEngine("Phi-3.5-mini-instruct-q4f16_1-MLC", {
+        const engine = await CreateMLCEngine("Qwen2.5-3B-Instruct-q4f16_1-MLC", {
           initProgressCallback: (progress) => {
             if (!mounted) return;
             console.log("📥 Progress:", progress);
