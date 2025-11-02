@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import * as webllm from "@mlc-ai/web-llm";
 
 interface Message {
@@ -24,24 +24,31 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
   const [isInitializing, setIsInitializing] = useState(true);
   const [initProgress, setInitProgress] = useState("");
 
-  // Use refs for values that shouldn't cause re-renders
+  // Refs
   const engineRef = useRef<webllm.MLCEngine | null>(null);
   const mountedRef = useRef(true);
   const processingRef = useRef(false);
+  const articleTitleRef = useRef(articleTitle);
+  const articleContentRef = useRef(articleContent);
 
-  // Initialize model - runs once on mount
+  // Update refs when props change
+  useEffect(() => {
+    articleTitleRef.current = articleTitle;
+    articleContentRef.current = articleContent;
+  }, [articleTitle, articleContent]);
+
+  // Initialize model
   useEffect(() => {
     mountedRef.current = true;
 
     async function initEngine() {
       if (typeof window === "undefined") return;
 
-      console.log("🚀 Starting AI model initialization...");
+      console.log("🚀 Initializing AI model...");
 
-      // Check WebGPU support
       if (!("gpu" in navigator)) {
         if (mountedRef.current) {
-          setError("WebGPU not supported. Use Chrome 113+ or Edge 113+");
+          setError("WebGPU not supported. Use Chrome 113+");
           setIsInitializing(false);
         }
         return;
@@ -49,37 +56,32 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
       try {
         if (mountedRef.current) {
-          setInitProgress("Checking WebGPU compatibility...");
+          setInitProgress("Checking WebGPU...");
         }
 
-        // Test WebGPU
         const adapter = await (navigator.gpu as any).requestAdapter();
         if (!adapter) {
-          throw new Error("No WebGPU adapter found");
+          throw new Error("No WebGPU adapter");
         }
 
-        console.log("✅ WebGPU is available");
+        console.log("✅ WebGPU available");
 
         if (mountedRef.current) {
-          setInitProgress("Loading Phi-3.5 Mini model...");
+          setInitProgress("Loading Phi-3.5 Mini...");
         }
 
-        // Create the engine
-        console.log("📥 Downloading Phi-3.5-mini-instruct-q4f16_1-MLC...");
+        console.log("📥 Creating engine...");
 
         const engine = await webllm.CreateMLCEngine(
           "Phi-3.5-mini-instruct-q4f16_1-MLC",
           {
             initProgressCallback: (report) => {
               if (!mountedRef.current) return;
-
-              console.log("Progress:", report);
-
+              console.log("📊", report);
               if (report.text) {
                 setInitProgress(report.text);
               } else if (report.progress) {
-                const pct = Math.round(report.progress * 100);
-                setInitProgress(`Loading model: ${pct}%`);
+                setInitProgress(`Loading: ${Math.round(report.progress * 100)}%`);
               }
             },
             logLevel: "INFO",
@@ -89,27 +91,15 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         if (!mountedRef.current) return;
 
         engineRef.current = engine;
-        console.log("✅ Model loaded successfully!");
-        console.log("Engine reference:", engineRef.current);
+        console.log("✅ ENGINE LOADED:", !!engineRef.current);
 
         setIsInitializing(false);
         setInitProgress("");
 
       } catch (err: any) {
-        console.error("❌ Model initialization failed:", err);
-
+        console.error("❌ Init failed:", err);
         if (mountedRef.current) {
-          let msg = "Failed to load AI model. ";
-
-          if (err.message?.includes("WebGPU") || err.message?.includes("adapter")) {
-            msg += "WebGPU not available. Use Chrome/Edge 113+";
-          } else if (err.message?.includes("network") || err.message?.includes("fetch")) {
-            msg += "Network error. Check your connection";
-          } else {
-            msg += err.message || "Unknown error";
-          }
-
-          setError(msg);
+          setError(err.message || "Failed to load model");
           setIsInitializing(false);
         }
       }
@@ -120,312 +110,266 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     return () => {
       mountedRef.current = false;
     };
-  }, []); // Empty deps - run once
+  }, []);
 
-  // Send message function - NOT in useCallback
-  async function sendMessage(content: string, enableSearch?: boolean) {
-    console.log("\n🔵 sendMessage called");
-    console.log("Content:", content);
-    console.log("Engine exists:", !!engineRef.current);
-    console.log("Processing:", processingRef.current);
+  // Stable function references using useMemo
+  const api = useMemo(() => {
+    return {
+      sendMessage: async (content: string, enableSearch?: boolean) => {
+        console.log("\n🔵 SEND MESSAGE");
+        console.log("Engine:", !!engineRef.current);
+        console.log("Processing:", processingRef.current);
+        console.log("Content:", content);
 
-    // Validation
-    if (!content?.trim()) {
-      console.log("❌ Empty content");
-      return;
-    }
+        if (!content?.trim()) {
+          console.log("❌ Empty");
+          return;
+        }
 
-    if (!engineRef.current) {
-      console.log("❌ No engine");
-      setError("AI model still loading...");
-      return;
-    }
+        if (!engineRef.current) {
+          console.log("❌ No engine");
+          setError("Model still loading");
+          return;
+        }
 
-    if (processingRef.current) {
-      console.log("❌ Already processing");
-      return;
-    }
+        if (processingRef.current) {
+          console.log("❌ Busy");
+          return;
+        }
 
-    if (!articleContent || !articleTitle) {
-      console.log("❌ No article data");
-      return;
-    }
+        const title = articleTitleRef.current;
+        const articleText = articleContentRef.current;
 
-    console.log("✅ All checks passed, starting processing");
+        if (!title || !articleText) {
+          console.log("❌ No article");
+          return;
+        }
 
-    // Lock processing
-    processingRef.current = true;
-    setIsLoading(true);
-    setError(null);
+        console.log("✅ Processing...");
 
-    const useWebSearch = enableSearch ?? webSearchEnabled;
+        processingRef.current = true;
+        setIsLoading(true);
+        setError(null);
 
-    // Add user message
-    const userMsg: Message = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: content.trim(),
-      timestamp: Date.now(),
-      webSearchEnabled: useWebSearch,
-    };
+        const userMsg: Message = {
+          id: `u${Date.now()}`,
+          role: "user",
+          content: content.trim(),
+          timestamp: Date.now(),
+        };
 
-    setMessages((prev) => [...prev, userMsg]);
+        setMessages((prev) => [...prev, userMsg]);
 
-    try {
-      let webContext = "";
-
-      // Web search if enabled
-      if (useWebSearch) {
-        console.log("🔍 Fetching web search...");
         try {
-          const res = await fetch("/api/assistant", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              question: content.trim(),
-              enableWebSearch: true,
-            }),
-          });
+          let webCtx = "";
 
-          if (res.ok) {
-            const data = await res.json();
-            if (data.webSearchResults) {
-              webContext = data.webSearchResults;
-              console.log("✅ Web search results retrieved");
+          if (enableSearch ?? webSearchEnabled) {
+            console.log("🔍 Web search...");
+            try {
+              const res = await fetch("/api/assistant", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  question: content.trim(),
+                  enableWebSearch: true,
+                }),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.webSearchResults) {
+                  webCtx = data.webSearchResults;
+                  console.log("✅ Web results");
+                }
+              }
+            } catch (e) {
+              console.warn("⚠️ Web search failed");
             }
           }
-        } catch (e) {
-          console.warn("⚠️ Web search failed:", e);
+
+          const clean = articleText
+            .replace(/<[^>]*>/g, " ")
+            .replace(/\[[0-9]+\]/g, "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .substring(0, 6000);
+
+          const prompt = `You are an AI assistant helping with this article.${webCtx ? ' You have web search results.' : ''}
+
+Article: "${title}"
+
+Content:
+${clean}${webCtx}
+
+Answer the user's question helpfully.`;
+
+          console.log("🤖 Generating...");
+
+          const resp = await engineRef.current!.chat.completions.create({
+            messages: [
+              { role: "system", content: prompt },
+              { role: "user", content: content.trim() }
+            ],
+            temperature: 0.5,
+            max_tokens: 1000,
+          });
+
+          const answer = resp.choices[0]?.message?.content || "No response";
+
+          console.log("✅ Got response:", answer.substring(0, 50));
+
+          setMessages((prev) => [...prev, {
+            id: `a${Date.now()}`,
+            role: "assistant",
+            content: answer,
+            timestamp: Date.now(),
+          }]);
+
+        } catch (err: any) {
+          console.error("❌ Error:", err);
+          setError(err.message || "Error");
+          setMessages((prev) => [...prev, {
+            id: `e${Date.now()}`,
+            role: "assistant",
+            content: "Error occurred. Please try again.",
+            timestamp: Date.now(),
+          }]);
+        } finally {
+          processingRef.current = false;
+          setIsLoading(false);
+          console.log("✅ Done\n");
         }
-      }
+      },
 
-      // Clean article content
-      const cleanContent = articleContent
-        .replace(/<[^>]*>/g, " ")
-        .replace(/\[[0-9]+\]/g, "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .substring(0, 6000);
+      generateSummary: async () => {
+        console.log("\n🔵 SUMMARY");
 
-      const systemPrompt = `You are an expert assistant helping users understand articles. You have access to the article content and can answer questions about it.${webContext ? ' You also have recent web search results.' : ''}
+        if (processingRef.current || !engineRef.current) {
+          console.log("❌ Can't generate");
+          return;
+        }
 
-Article Title: "${articleTitle}"
+        processingRef.current = true;
+        setIsLoading(true);
+        setError(null);
 
-Article Content:
-${cleanContent}${webContext}
+        setMessages((prev) => [...prev, {
+          id: `u${Date.now()}`,
+          role: "user",
+          content: "Summarize this article",
+          timestamp: Date.now(),
+        }]);
 
-Provide helpful answers to the user's questions.`;
+        try {
+          const clean = articleContentRef.current
+            .replace(/<[^>]*>/g, " ")
+            .replace(/\[[0-9]+\]/g, "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .substring(0, 4000);
 
-      console.log("🤖 Calling AI model...");
-      console.log("Using engine:", engineRef.current);
+          const resp = await engineRef.current.chat.completions.create({
+            messages: [
+              { role: "system", content: "Summarize in 3-5 bullet points." },
+              { role: "user", content: `Article: "${articleTitleRef.current}"\n\n${clean}\n\nSummary:` }
+            ],
+            temperature: 0.3,
+            max_tokens: 500,
+          });
 
-      // Call the model
-      const response = await engineRef.current.chat.completions.create({
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: content.trim() }
-        ],
-        temperature: 0.5,
-        max_tokens: 1000,
-      });
+          const summary = resp.choices[0]?.message?.content || "No summary";
 
-      const answer = response.choices[0]?.message?.content || "No response generated";
+          setMessages((prev) => [...prev, {
+            id: `a${Date.now()}`,
+            role: "assistant",
+            content: summary,
+            timestamp: Date.now(),
+          }]);
 
-      console.log("✅ AI response received:", answer.substring(0, 100));
+        } catch (err) {
+          console.error("❌", err);
+          setError("Summary failed");
+          setMessages((prev) => [...prev, {
+            id: `e${Date.now()}`,
+            role: "assistant",
+            content: "Couldn't generate summary.",
+            timestamp: Date.now(),
+          }]);
+        } finally {
+          processingRef.current = false;
+          setIsLoading(false);
+        }
+      },
 
-      // Add assistant message
-      const assistantMsg: Message = {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content: answer,
-        timestamp: Date.now(),
-      };
+      generateQuiz: async () => {
+        console.log("\n🔵 QUIZ");
 
-      setMessages((prev) => [...prev, assistantMsg]);
+        if (processingRef.current || !engineRef.current) {
+          console.log("❌ Can't generate");
+          return;
+        }
 
-    } catch (err: any) {
-      console.error("❌ Error:", err);
-      setError(err.message || "Error generating response");
+        processingRef.current = true;
+        setIsLoading(true);
+        setError(null);
 
-      const errorMsg: Message = {
-        id: `error-${Date.now()}`,
-        role: "assistant",
-        content: "Sorry, I encountered an error. Please try again.",
-        timestamp: Date.now(),
-      };
+        setMessages((prev) => [...prev, {
+          id: `u${Date.now()}`,
+          role: "user",
+          content: "Generate quiz questions",
+          timestamp: Date.now(),
+        }]);
 
-      setMessages((prev) => [...prev, errorMsg]);
-    } finally {
-      processingRef.current = false;
-      setIsLoading(false);
-      console.log("✅ Processing complete\n");
-    }
-  }
+        try {
+          const clean = articleContentRef.current
+            .replace(/<[^>]*>/g, " ")
+            .replace(/\[[0-9]+\]/g, "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .substring(0, 4000);
 
-  // Generate summary
-  async function generateSummary() {
-    console.log("\n🔵 generateSummary called");
+          const resp = await engineRef.current.chat.completions.create({
+            messages: [
+              { role: "system", content: "Create 3 multiple-choice questions. Format: Q: [question]\\nA) [option]\\nB) [option]\\nC) [option]\\nD) [option]\\nCorrect: [letter]" },
+              { role: "user", content: `Article: "${articleTitleRef.current}"\n\n${clean}\n\nGenerate quiz:` }
+            ],
+            temperature: 0.5,
+            max_tokens: 800,
+          });
 
-    if (processingRef.current || !engineRef.current || !articleContent || !articleTitle) {
-      console.log("❌ Cannot generate summary");
-      return;
-    }
+          const quiz = resp.choices[0]?.message?.content || "No quiz";
 
-    processingRef.current = true;
-    setIsLoading(true);
-    setError(null);
+          setMessages((prev) => [...prev, {
+            id: `a${Date.now()}`,
+            role: "assistant",
+            content: quiz,
+            timestamp: Date.now(),
+          }]);
 
-    const userMsg: Message = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: "Summarize this article",
-      timestamp: Date.now(),
+        } catch (err) {
+          console.error("❌", err);
+          setError("Quiz failed");
+          setMessages((prev) => [...prev, {
+            id: `e${Date.now()}`,
+            role: "assistant",
+            content: "Couldn't generate quiz.",
+            timestamp: Date.now(),
+          }]);
+        } finally {
+          processingRef.current = false;
+          setIsLoading(false);
+        }
+      },
+
+      clearChat: () => {
+        setMessages([]);
+        setError(null);
+      },
+
+      toggleWebSearch: () => {
+        setWebSearchEnabled((prev) => !prev);
+      },
     };
-
-    setMessages((prev) => [...prev, userMsg]);
-
-    try {
-      const cleanContent = articleContent
-        .replace(/<[^>]*>/g, " ")
-        .replace(/\[[0-9]+\]/g, "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .substring(0, 4000);
-
-      console.log("🤖 Generating summary...");
-
-      const response = await engineRef.current.chat.completions.create({
-        messages: [
-          {
-            role: "system",
-            content: "You are a summarization expert. Provide a concise summary in 3-5 bullet points."
-          },
-          {
-            role: "user",
-            content: `Article: "${articleTitle}"\n\n${cleanContent}\n\nSummary:`
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 500,
-      });
-
-      const summary = response.choices[0]?.message?.content || "Could not generate summary";
-
-      console.log("✅ Summary generated");
-
-      const assistantMsg: Message = {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content: summary,
-        timestamp: Date.now(),
-      };
-
-      setMessages((prev) => [...prev, assistantMsg]);
-
-    } catch (err) {
-      console.error("❌ Summary error:", err);
-      setError("Failed to generate summary");
-
-      const errorMsg: Message = {
-        id: `error-${Date.now()}`,
-        role: "assistant",
-        content: "Sorry, couldn't generate summary. Try again.",
-        timestamp: Date.now(),
-      };
-
-      setMessages((prev) => [...prev, errorMsg]);
-    } finally {
-      processingRef.current = false;
-      setIsLoading(false);
-    }
-  }
-
-  // Generate quiz
-  async function generateQuiz() {
-    console.log("\n🔵 generateQuiz called");
-
-    if (processingRef.current || !engineRef.current || !articleContent || !articleTitle) {
-      console.log("❌ Cannot generate quiz");
-      return;
-    }
-
-    processingRef.current = true;
-    setIsLoading(true);
-    setError(null);
-
-    const userMsg: Message = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: "Generate quiz questions",
-      timestamp: Date.now(),
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
-
-    try {
-      const cleanContent = articleContent
-        .replace(/<[^>]*>/g, " ")
-        .replace(/\[[0-9]+\]/g, "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .substring(0, 4000);
-
-      console.log("🤖 Generating quiz...");
-
-      const response = await engineRef.current.chat.completions.create({
-        messages: [
-          {
-            role: "system",
-            content: "You are a quiz generator. Create 3 multiple-choice questions. Format: Q: [question]\\nA) [option]\\nB) [option]\\nC) [option]\\nD) [option]\\nCorrect: [letter]"
-          },
-          {
-            role: "user",
-            content: `Article: "${articleTitle}"\n\n${cleanContent}\n\nGenerate 3 quiz questions:`
-          }
-        ],
-        temperature: 0.5,
-        max_tokens: 800,
-      });
-
-      const quiz = response.choices[0]?.message?.content || "Could not generate quiz";
-
-      console.log("✅ Quiz generated");
-
-      const assistantMsg: Message = {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content: quiz,
-        timestamp: Date.now(),
-      };
-
-      setMessages((prev) => [...prev, assistantMsg]);
-
-    } catch (err) {
-      console.error("❌ Quiz error:", err);
-      setError("Failed to generate quiz");
-
-      const errorMsg: Message = {
-        id: `error-${Date.now()}`,
-        role: "assistant",
-        content: "Sorry, couldn't generate quiz. Try again.",
-        timestamp: Date.now(),
-      };
-
-      setMessages((prev) => [...prev, errorMsg]);
-    } finally {
-      processingRef.current = false;
-      setIsLoading(false);
-    }
-  }
-
-  function clearChat() {
-    setMessages([]);
-    setError(null);
-  }
-
-  function toggleWebSearch() {
-    setWebSearchEnabled((prev) => !prev);
-  }
+  }, [webSearchEnabled]); // Only webSearchEnabled as dependency
 
   return {
     messages,
@@ -434,10 +378,10 @@ Provide helpful answers to the user's questions.`;
     initProgress,
     error,
     webSearchEnabled,
-    sendMessage,
-    generateSummary,
-    generateQuiz,
-    clearChat,
-    toggleWebSearch,
+    sendMessage: api.sendMessage,
+    generateSummary: api.generateSummary,
+    generateQuiz: api.generateQuiz,
+    clearChat: api.clearChat,
+    toggleWebSearch: api.toggleWebSearch,
   };
 }
