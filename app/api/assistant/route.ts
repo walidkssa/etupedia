@@ -35,10 +35,16 @@ export async function POST(request: NextRequest) {
           const searchData = await searchResponse.json();
 
           if (searchData?.data?.webPages?.value && searchData.data.webPages.value.length > 0) {
-            webSearchResults = "\n\nRecent Web Findings:\n" +
-              searchData.data.webPages.value.map((result: any, idx: number) =>
-                `${idx + 1}. ${result.name}\n   ${result.summary || result.snippet}\n   Source: ${result.url}`
-              ).join("\n\n");
+            // Format results with clean markdown structure
+            const results = searchData.data.webPages.value.map((result: any, idx: number) => {
+              const title = result.name || "Untitled";
+              const summary = result.summary || result.snippet || "No description available";
+              const url = result.url || "#";
+
+              return `**${idx + 1}. ${title}**\n\n${summary}\n\n🔗 [${url}](${url})`;
+            }).join("\n\n---\n\n");
+
+            webSearchResults = `# 🌐 Web Search Results\n\n${results}`;
           }
         }
       } catch (err) {
