@@ -30,10 +30,10 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
     async function initEngine() {
       try {
-        console.log("🚀 Initializing Llama 3.2 3B...");
+        console.log("🚀 Initializing Llama 3.2 1B...");
         setInitProgress("Downloading AI model...");
 
-        const engine = await CreateMLCEngine("Llama-3.2-3B-Instruct-q4f16_1-MLC", {
+        const engine = await CreateMLCEngine("Llama-3.2-1B-Instruct-q4f16_1-MLC", {
           initProgressCallback: (progress) => {
             if (!mounted) return;
             console.log("📥 Progress:", progress);
