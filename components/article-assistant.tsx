@@ -129,13 +129,13 @@ export function ArticleAssistant({
               Loading AI Model
             </h3>
             <p className="text-sm text-muted-foreground max-w-md mb-4">
-              {initProgress || "Downloading Phi-4 Mini Instruct..."}
+              {initProgress || "Downloading Phi-3 Mini Instruct..."}
             </p>
             <div className="w-full max-w-xs bg-secondary rounded-full h-2 overflow-hidden">
               <div className="bg-primary h-full animate-pulse"></div>
             </div>
             <p className="text-xs text-muted-foreground mt-4">
-              Loading Microsoft's latest model - First load takes 2-3 minutes
+              Loading Microsoft's powerful model - First load takes 1-2 minutes
             </p>
           </div>
         )}
@@ -165,7 +165,7 @@ export function ArticleAssistant({
               Ask me anything about this article, request a summary, or test your knowledge with a quiz!
             </p>
             <p className="text-xs text-primary/70 mt-3">
-              ✓ Powered by Phi-4 Mini running locally
+              ✓ Powered by Phi-3 Mini running locally
             </p>
           </div>
         )}
@@ -252,7 +252,7 @@ export function ArticleAssistant({
           </button>
         </form>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          Powered by Phi-4 Mini Instruct running locally • 100% private
+          Powered by Phi-3 Mini Instruct running locally • 100% private
         </p>
       </div>
     </div>
