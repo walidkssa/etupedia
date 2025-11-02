@@ -270,7 +270,7 @@ export default function ArticlePage() {
               <SearchCommand placeholder="Search" compact />
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-0.5 lg:gap-2 shrink-0">
               {/* Summarize button */}
               <button
                 onClick={handleSummarize}
