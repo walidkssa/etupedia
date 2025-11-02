@@ -30,11 +30,11 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
     async function initEngine() {
       try {
-        console.log("🚀 Initializing Llama 3.2 1B...");
+        console.log("🚀 Initializing Phi-3.5-mini...");
         setInitProgress("Initializing WebLLM...");
 
-        // Use 1B model for production compatibility (3B blocked by CORS)
-        let modelName = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
+        // Phi-3.5-mini: Best performance/size ratio (400MB, as powerful as 1.5-2B models)
+        let modelName = "Phi-3.5-mini-instruct-q4f16_1-MLC";
 
         console.log(`📦 Attempting to load model: ${modelName}`);
         setInitProgress("Connecting to model server...");
