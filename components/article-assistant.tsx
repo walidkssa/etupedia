@@ -113,7 +113,7 @@ export function ArticleAssistant({
               <ReloadIcon className="w-8 h-8 text-primary animate-spin" />
             </div>
             <h3 className="font-semibold text-base mb-2">
-              Loading Llama 3.2 3B Model...
+              Loading Llama 3.2 1B Model...
             </h3>
             <p className="text-sm text-muted-foreground max-w-xs mb-3">
               {initProgress || "Initializing AI model..."}
@@ -149,7 +149,7 @@ export function ArticleAssistant({
               Ask me anything about this article, request a summary, or test your knowledge with a quiz!
             </p>
             <p className="text-xs text-primary/70 mt-3">
-              ✓ Powered by Llama 3.2 3B • 100% Local & Private
+              ✓ Powered by Llama 3.2 1B • 100% Local & Private
             </p>
           </div>
         )}
@@ -236,7 +236,7 @@ export function ArticleAssistant({
           </button>
         </form>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          Powered by Llama 3.2 3B • Runs locally in your browser
+          Powered by Llama 3.2 1B • Runs locally in your browser
         </p>
       </div>
     </div>
