@@ -98,9 +98,11 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         .replace(/\s+/g, " ")
         .trim();
 
-      // Llama 3.2 has 128K context - use larger chunk
-      const contextContent = cleanContent.length > 30000
-        ? cleanContent.substring(0, 30000) + "\n[...]"
+      // Llama 3.2 1B has limited context (4096 tokens) - use smaller chunk
+      // ~3 chars = 1 token, so 4096 tokens ≈ 12000 chars
+      // Leave room for system prompt and response
+      const contextContent = cleanContent.length > 10000
+        ? cleanContent.substring(0, 10000) + "\n[Article truncated...]"
         : cleanContent;
 
       console.log(`📄 Using ${contextContent.length} chars`);
