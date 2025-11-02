@@ -224,7 +224,7 @@ export default function ArticlePage() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm">
         <div className="max-w-screen-2xl mx-auto px-2 lg:px-6 py-3 lg:py-4">
-          <div className="flex items-center justify-start lg:justify-between gap-1 lg:gap-4">
+          <div className="flex items-center justify-between gap-1 lg:gap-4">
             {/* Mobile layout: Hamburger + Search bar grouped */}
             <div className="flex items-center gap-1.5 lg:hidden">
               <button
