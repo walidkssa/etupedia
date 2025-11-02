@@ -87,7 +87,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
             pooling: "mean",
             normalize: true,
           });
-          chunks[i].embedding = Array.from(output.data);
+          chunks[i].embedding = Array.from(output.data) as number[];
 
           if (i % 10 === 0) {
             setInitProgress(`Embedded ${i + 1}/${chunks.length} chunks...`);
@@ -152,11 +152,13 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
       });
       const queryEmbedding = Array.from(queryOutput.data) as number[];
 
-      // Calculate similarity scores
-      const scores = chunksRef.current.map((chunk, idx) => ({
-        idx,
-        score: cos_sim(queryEmbedding, chunk.embedding as number[]),
-      }));
+      // Calculate similarity scores (filter out chunks without embeddings)
+      const scores = chunksRef.current
+        .map((chunk, idx) => ({
+          idx,
+          score: chunk.embedding ? cos_sim(queryEmbedding, chunk.embedding as number[]) : 0,
+        }))
+        .filter(s => s.score > 0);
 
       // Sort by score and get top K
       scores.sort((a, b) => b.score - a.score);
