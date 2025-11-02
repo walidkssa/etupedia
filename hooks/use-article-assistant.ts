@@ -26,31 +26,84 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
   const engineRef = useRef<webllm.MLCEngine | null>(null);
 
-  // Initialize Mistral 7B Instruct model
+  // Initialize Mistral 7B Instruct model with optimized configuration
   useEffect(() => {
     const initializeModel = async () => {
       if (typeof window === "undefined") return;
 
+      // Check WebGPU support first
+      if (!("gpu" in navigator)) {
+        setError("WebGPU is not supported in your browser. Please use Chrome 113+, Edge 113+, or another Chromium-based browser.");
+        setIsInitializing(false);
+        return;
+      }
+
+      const timeoutId = setTimeout(() => {
+        if (engineRef.current === null) {
+          setError("Model loading timeout. The model is very large (~4GB). Please check your internet connection and try refreshing the page.");
+          setIsInitializing(false);
+        }
+      }, 5 * 60 * 1000); // 5 minutes timeout
+
       try {
         setIsInitializing(true);
-        setInitProgress("Loading Mistral 7B Instruct model...");
+        setInitProgress("Checking browser compatibility...");
 
+        // Test WebGPU availability
+        try {
+          const adapter = await (navigator.gpu as any).requestAdapter();
+          if (!adapter) {
+            throw new Error("WebGPU adapter not available");
+          }
+        } catch (gpuErr) {
+          throw new Error("WebGPU is not available. Please use a Chromium-based browser (Chrome, Edge, Brave) version 113+.");
+        }
+
+        setInitProgress("Preparing Mistral 7B Instruct model...");
+
+        // Create engine with optimized settings for large models
         const engine = await webllm.CreateMLCEngine(
           "Mistral-7B-Instruct-v0.3-q4f16_1-MLC",
           {
             initProgressCallback: (progress) => {
-              setInitProgress(progress.text);
+              console.log("Model loading progress:", progress);
+              // Show detailed progress to user
+              if (progress.text) {
+                setInitProgress(progress.text);
+              } else if (progress.progress) {
+                setInitProgress(`Loading model: ${Math.round(progress.progress * 100)}%`);
+              }
             },
+            logLevel: "INFO",
           }
         );
 
+        clearTimeout(timeoutId);
         engineRef.current = engine;
         setIsInitializing(false);
         setInitProgress("");
+        console.log("Mistral 7B Instruct loaded successfully!");
+
       } catch (err: any) {
-        console.error("Error initializing model:", err);
-        setError("Failed to load AI model. Please refresh the page.");
+        clearTimeout(timeoutId);
+        console.error("Error initializing Mistral 7B:", err);
+
+        // Provide detailed error message
+        let errorMsg = "Failed to load Mistral 7B Instruct model. ";
+
+        if (err.message?.includes("WebGPU") || err.message?.includes("adapter")) {
+          errorMsg += "WebGPU is not available. Please use Chrome 113+, Edge 113+, or another Chromium-based browser.";
+        } else if (err.message?.includes("Cache") || err.message?.includes("network") || err.message?.includes("fetch")) {
+          errorMsg += "Network error occurred. This model is ~4GB and requires a stable internet connection. Please check your connection and try refreshing the page.";
+        } else if (err.message?.includes("out of memory") || err.message?.includes("OOM")) {
+          errorMsg += "Your device ran out of memory. Please close other tabs and try again.";
+        } else {
+          errorMsg += err.message || "Unknown error occurred. Please try refreshing the page.";
+        }
+
+        setError(errorMsg);
         setIsInitializing(false);
+        setInitProgress("");
       }
     };
 
@@ -66,8 +119,28 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
   // Send a message
   const sendMessage = useCallback(async (content: string, enableSearch?: boolean) => {
-    if (!content.trim() || isLoading || !engineRef.current) return;
-    if (!articleContent || !articleTitle) return;
+    console.log("sendMessage called", { content, isLoading, hasEngine: !!engineRef.current, isInitializing });
+
+    if (!content.trim()) {
+      console.log("Content is empty");
+      return;
+    }
+
+    if (isLoading) {
+      console.log("Already loading");
+      return;
+    }
+
+    if (!engineRef.current) {
+      console.log("Engine not ready");
+      setError("AI model is still loading. Please wait...");
+      return;
+    }
+
+    if (!articleContent || !articleTitle) {
+      console.log("Missing article data");
+      return;
+    }
 
     const shouldUseWebSearch = enableSearch !== undefined ? enableSearch : webSearchEnabled;
 

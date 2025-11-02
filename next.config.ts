@@ -57,6 +57,62 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Optimize for WebLLM and WebAssembly support
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Enable WebAssembly support for WebLLM
+      config.experiments = {
+        ...config.experiments,
+        asyncWebAssembly: true,
+        layers: true,
+      };
+
+      // Optimize for large model downloads
+      config.performance = {
+        ...config.performance,
+        maxAssetSize: 10000000, // 10MB
+        maxEntrypointSize: 10000000,
+      };
+    }
+    return config;
+  },
+  // Security headers for WebGPU - Only in development to avoid CORS issues on Vercel
+  async headers() {
+    // Only apply strict headers in development
+    if (process.env.NODE_ENV === 'development') {
+      return [
+        {
+          source: '/:path*',
+          headers: [
+            {
+              key: 'Cross-Origin-Embedder-Policy',
+              value: 'require-corp',
+            },
+            {
+              key: 'Cross-Origin-Opener-Policy',
+              value: 'same-origin',
+            },
+          ],
+        },
+      ];
+    }
+    // In production, use credentialless for better compatibility
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'credentialless',
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+        ],
+      },
+    ];
+  },
   // Empty turbopack config to silence warning
   turbopack: {},
 };
