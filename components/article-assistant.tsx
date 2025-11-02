@@ -25,6 +25,7 @@ export function ArticleAssistant({
     messages,
     isLoading,
     isInitializing,
+    initProgress,
     error,
     webSearchEnabled,
     sendMessage,
@@ -118,8 +119,29 @@ export function ArticleAssistant({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Model loading progress */}
+        {isInitializing && (
+          <div className="flex flex-col items-center justify-center h-full text-center p-6">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <ReloadIcon className="w-8 h-8 text-primary animate-spin" />
+            </div>
+            <h3 className="font-semibold text-base mb-2">
+              Loading Mistral 7B Instruct
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-md mb-4">
+              {initProgress || "Initializing local AI model..."}
+            </p>
+            <div className="w-full max-w-xs bg-secondary rounded-full h-2 overflow-hidden">
+              <div className="bg-primary h-full animate-pulse"></div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              This may take 30-60 seconds on first load
+            </p>
+          </div>
+        )}
+
         {/* Welcome message */}
-        {messages.length === 0 && (
+        {!isInitializing && messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <svg
@@ -141,6 +163,9 @@ export function ArticleAssistant({
             </h3>
             <p className="text-sm text-muted-foreground max-w-xs">
               Ask me anything about this article, request a summary, or test your knowledge with a quiz!
+            </p>
+            <p className="text-xs text-primary/70 mt-3">
+              ✓ Powered by Mistral 7B running locally
             </p>
           </div>
         )}
@@ -227,7 +252,7 @@ export function ArticleAssistant({
           </button>
         </form>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          Powered by AI running locally in your browser • 100% private
+          Powered by Mistral 7B Instruct running locally • 100% private
         </p>
       </div>
     </div>

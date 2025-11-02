@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import * as webllm from "@mlc-ai/web-llm";
 
 interface Message {
   id: string;
@@ -20,10 +21,52 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [initProgress, setInitProgress] = useState("");
+
+  const engineRef = useRef<webllm.MLCEngine | null>(null);
+
+  // Initialize Mistral 7B Instruct model
+  useEffect(() => {
+    const initializeModel = async () => {
+      if (typeof window === "undefined") return;
+
+      try {
+        setIsInitializing(true);
+        setInitProgress("Loading Mistral 7B Instruct model...");
+
+        const engine = await webllm.CreateMLCEngine(
+          "Mistral-7B-Instruct-v0.3-q4f16_1-MLC",
+          {
+            initProgressCallback: (progress) => {
+              setInitProgress(progress.text);
+            },
+          }
+        );
+
+        engineRef.current = engine;
+        setIsInitializing(false);
+        setInitProgress("");
+      } catch (err: any) {
+        console.error("Error initializing model:", err);
+        setError("Failed to load AI model. Please refresh the page.");
+        setIsInitializing(false);
+      }
+    };
+
+    initializeModel();
+
+    return () => {
+      // Cleanup
+      if (engineRef.current) {
+        engineRef.current = null;
+      }
+    };
+  }, []);
 
   // Send a message
   const sendMessage = useCallback(async (content: string, enableSearch?: boolean) => {
-    if (!content.trim() || isLoading) return;
+    if (!content.trim() || isLoading || !engineRef.current) return;
     if (!articleContent || !articleTitle) return;
 
     const shouldUseWebSearch = enableSearch !== undefined ? enableSearch : webSearchEnabled;
@@ -41,24 +84,60 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     setError(null);
 
     try {
-      const response = await fetch("/api/assistant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          articleContent,
-          articleTitle,
-          question: content.trim(),
-          enableWebSearch: shouldUseWebSearch,
-        }),
-      });
+      let webSearchContext = "";
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to get response");
+      // Get web search results if enabled
+      if (shouldUseWebSearch) {
+        try {
+          const response = await fetch("/api/assistant", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              question: content.trim(),
+              enableWebSearch: true,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.webSearchResults) {
+              webSearchContext = data.webSearchResults;
+            }
+          }
+        } catch (err) {
+          console.error("Web search error:", err);
+          // Continue without web search
+        }
       }
 
-      const data = await response.json();
-      const answer = data.response || "I'm sorry, I couldn't generate a response.";
+      // Prepare context for the AI
+      const cleanContent = articleContent
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\[[0-9]+\]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .substring(0, 6000);
+
+      const systemPrompt = `You are an expert assistant that helps users understand articles. You are contextually aware of the article content and can provide insights and answer questions based on it.${webSearchContext ? ' You also have access to recent web search results to provide up-to-date information.' : ''}
+
+Article Title: "${articleTitle}"
+
+Article Content:
+${cleanContent}${webSearchContext}
+
+Please provide a comprehensive and helpful answer to the user's question.`;
+
+      // Generate response using Mistral 7B
+      const response = await engineRef.current!.chat.completions.create({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: content.trim() }
+        ],
+        temperature: 0.4,
+        max_tokens: 1000,
+      });
+
+      const answer = response.choices[0]?.message?.content || "I couldn't generate a response.";
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -85,9 +164,9 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     }
   }, [isLoading, articleTitle, articleContent, webSearchEnabled]);
 
-  // Generate summary
+  // Generate summary using Mistral 7B
   const generateSummary = useCallback(async () => {
-    if (isLoading || !articleContent || !articleTitle) return;
+    if (isLoading || !engineRef.current || !articleContent || !articleTitle) return;
 
     setIsLoading(true);
     setError(null);
@@ -102,22 +181,29 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     setMessages((prev) => [...prev, userMessage]);
 
     try {
-      const response = await fetch("/api/assistant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          articleContent,
-          articleTitle,
-          action: "summarize",
-        }),
+      const cleanContent = articleContent
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\[[0-9]+\]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .substring(0, 4000);
+
+      const response = await engineRef.current.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: `You are a summarization expert. Provide a concise summary of the following article in 3-5 bullet points.`
+          },
+          {
+            role: "user",
+            content: `Article: "${articleTitle}"\n\n${cleanContent}\n\nProvide a summary:`
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 500,
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to generate summary");
-      }
-
-      const data = await response.json();
-      const summary = data.response || "Could not generate summary.";
+      const summary = response.choices[0]?.message?.content || "Could not generate summary.";
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -144,9 +230,9 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     }
   }, [isLoading, articleTitle, articleContent]);
 
-  // Generate quiz
+  // Generate quiz using Mistral 7B
   const generateQuiz = useCallback(async () => {
-    if (isLoading || !articleContent || !articleTitle) return;
+    if (isLoading || !engineRef.current || !articleContent || !articleTitle) return;
 
     setIsLoading(true);
     setError(null);
@@ -161,22 +247,29 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     setMessages((prev) => [...prev, userMessage]);
 
     try {
-      const response = await fetch("/api/assistant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          articleContent,
-          articleTitle,
-          action: "quiz",
-        }),
+      const cleanContent = articleContent
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\[[0-9]+\]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .substring(0, 4000);
+
+      const response = await engineRef.current.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are a quiz generator. Create 3 multiple-choice questions based on the article content. Format each as: Q: [question]\\nA) [option]\\nB) [option]\\nC) [option]\\nD) [option]\\nCorrect: [letter]"
+          },
+          {
+            role: "user",
+            content: `Article: "${articleTitle}"\n\n${cleanContent}\n\nGenerate 3 quiz questions:`
+          }
+        ],
+        temperature: 0.5,
+        max_tokens: 800,
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to generate quiz");
-      }
-
-      const data = await response.json();
-      const quiz = data.response || "Could not generate quiz.";
+      const quiz = response.choices[0]?.message?.content || "Could not generate quiz.";
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -217,7 +310,8 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
   return {
     messages,
     isLoading,
-    isInitializing: false,
+    isInitializing,
+    initProgress,
     error,
     webSearchEnabled,
     sendMessage,
