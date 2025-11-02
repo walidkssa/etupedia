@@ -60,12 +60,6 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
       return;
     }
 
-    if (!aiEngine.isReady()) {
-      console.log("❌ Engine not ready");
-      setError("AI engine is still loading. Please wait...");
-      return;
-    }
-
     if (isLoading) {
       console.log("❌ Already processing another message");
       return;
@@ -95,7 +89,13 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         .trim()
         .substring(0, 6000);
 
-      const systemPrompt = `You are a helpful assistant. Answer questions about this article.
+      let answer: string;
+
+      // Try local AI engine first
+      if (aiEngine.isReady()) {
+        console.log("🤖 Using local AI engine (Phi-3.5 Mini)...");
+
+        const systemPrompt = `You are a helpful assistant. Answer questions about this article.
 
 Article: "${articleTitle}"
 
@@ -103,20 +103,41 @@ Content: ${cleanContent}
 
 Provide clear, helpful answers.`;
 
-      console.log("🤖 Calling AI engine...");
+        answer = await aiEngine.chat(
+          [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: content.trim() },
+          ],
+          {
+            temperature: 0.5,
+            max_tokens: 1000,
+          }
+        );
 
-      const answer = await aiEngine.chat(
-        [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: content.trim() },
-        ],
-        {
-          temperature: 0.5,
-          max_tokens: 1000,
+        console.log("✅ Got response from local engine");
+      } else {
+        // Fallback to ChatGPT Free API
+        console.log("🌐 Local engine not ready, using ChatGPT Free API...");
+
+        const response = await fetch('/api/chatgpt-free', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            articleTitle,
+            articleContent: cleanContent,
+            question: content.trim()
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('ChatGPT Free API failed');
         }
-      );
 
-      console.log("✅ Got response:", answer.substring(0, 100));
+        const data = await response.json();
+        answer = data.response;
+
+        console.log("✅ Got response from ChatGPT Free");
+      }
 
       // Add assistant message
       const assistantMsg: Message = {
