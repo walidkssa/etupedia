@@ -104,11 +104,13 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         .replace(/\s+/g, " ")
         .trim();
 
-      // Llama 3.2 1B supports 128K context - we can use the full article
-      // Only limit if article is extremely long (>50K chars)
-      const contextContent = cleanContent.length > 50000
-        ? cleanContent.substring(0, 50000) + "..."
+      // Llama 3.2 1B supports 128K tokens (~100K characters)
+      // Use the entire article - only limit if it exceeds model capacity
+      const contextContent = cleanContent.length > 100000
+        ? cleanContent.substring(0, 100000) + "\n\n[Article truncated due to length - first 100,000 characters shown]"
         : cleanContent;
+
+      console.log(`📄 Article length: ${cleanContent.length} characters, using: ${contextContent.length} characters`);
 
       const completion = await engineRef.current.chat.completions.create({
         messages: [
