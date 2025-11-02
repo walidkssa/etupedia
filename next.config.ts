@@ -57,6 +57,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Empty turbopack config to silence warning
+  turbopack: {},
+  serverExternalPackages: ['@xenova/transformers'],
 };
 
 export default nextConfig;
