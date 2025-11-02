@@ -26,12 +26,12 @@ export function ArticleAssistant({
     isLoading,
     isInitializing,
     error,
-    initProgress,
+    webSearchEnabled,
     sendMessage,
     generateSummary,
     generateQuiz,
     clearChat,
-    initializeModels,
+    toggleWebSearch,
   } = useArticleAssistant({
     articleTitle,
     articleContent,
@@ -44,25 +44,14 @@ export function ArticleAssistant({
 
   // Focus input when panel opens
   useEffect(() => {
-    if (isOpen && !isInitializing) {
+    if (isOpen) {
       inputRef.current?.focus();
     }
-  }, [isOpen, isInitializing]);
-
-  // Initialize models when panel opens for the first time
-  useEffect(() => {
-    if (isOpen && articleContent && articleTitle) {
-      // Add a small delay to ensure component is fully mounted
-      const timer = setTimeout(() => {
-        initializeModels();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, articleContent, articleTitle, initializeModels]);
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading || isInitializing) return;
+    if (!input.trim() || isLoading) return;
 
     await sendMessage(input);
     setInput("");
@@ -107,6 +96,17 @@ export function ArticleAssistant({
             Quiz Me
           </button>
           <button
+            onClick={toggleWebSearch}
+            className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+              webSearchEnabled
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'bg-accent hover:bg-accent/80'
+            }`}
+            title="Enable web search for latest information"
+          >
+            {webSearchEnabled ? '🌐 Web Search ON' : '🌐 Web Search'}
+          </button>
+          <button
             onClick={clearChat}
             disabled={isLoading || isInitializing || messages.length === 0}
             className="px-3 py-1.5 text-xs rounded-lg bg-accent hover:bg-accent/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ml-auto"
@@ -118,24 +118,8 @@ export function ArticleAssistant({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Initializing state */}
-        {isInitializing && messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center p-6">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mb-4"></div>
-            <p className="text-sm font-medium">Loading AI Model...</p>
-            {initProgress && (
-              <p className="text-xs text-muted-foreground mt-2 max-w-xs">
-                {initProgress}
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground mt-2">
-              100% free • No limits • Runs in your browser
-            </p>
-          </div>
-        )}
-
         {/* Welcome message */}
-        {!isInitializing && messages.length === 0 && (
+        {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <svg

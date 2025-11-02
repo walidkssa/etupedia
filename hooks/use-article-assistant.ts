@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 
 interface Message {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
   timestamp: number;
+  webSearchEnabled?: boolean;
 }
 
 interface UseArticleAssistantProps {
@@ -17,70 +18,22 @@ interface UseArticleAssistantProps {
 export function useArticleAssistant({ articleTitle, articleContent }: UseArticleAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [initProgress, setInitProgress] = useState("");
-
-  const engineRef = useRef<any>(null);
-  const isInitializedRef = useRef(false);
-
-  // Initialize WebLLM engine (runs in browser, 100% free, no limits!)
-  const initializeModels = useCallback(async () => {
-    if (isInitializedRef.current || isInitializing) return;
-    if (!articleContent || !articleTitle) return;
-    if (typeof window === 'undefined') return;
-
-    isInitializedRef.current = true;
-    setIsInitializing(true);
-    setError(null);
-
-    try {
-      // Dynamically import WebLLM (client-side only)
-      const { CreateMLCEngine } = await import("@mlc-ai/web-llm");
-
-      setInitProgress("Initializing AI model (this happens once)...");
-
-      // Use smallest, fastest model: Llama-3.2-1B (only 1GB, very fast!)
-      engineRef.current = await CreateMLCEngine(
-        "Llama-3.2-1B-Instruct-q4f16_1-MLC",
-        {
-          initProgressCallback: (progress) => {
-            setInitProgress(progress.text || "Loading...");
-          },
-        }
-      );
-
-      setInitProgress("");
-      setIsInitializing(false);
-      console.log("WebLLM engine initialized successfully!");
-    } catch (err) {
-      console.error("Error initializing WebLLM:", err);
-      setError("Failed to load AI model. Your browser may not support WebGPU.");
-      setIsInitializing(false);
-      isInitializedRef.current = false;
-      setInitProgress("");
-    }
-  }, [articleContent, articleTitle, isInitializing]);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
   // Send a message
-  const sendMessage = useCallback(async (content: string) => {
+  const sendMessage = useCallback(async (content: string, enableSearch?: boolean) => {
     if (!content.trim() || isLoading) return;
+    if (!articleContent || !articleTitle) return;
 
-    // Initialize if needed
-    if (!engineRef.current) {
-      await initializeModels();
-    }
-
-    if (!engineRef.current) {
-      setError("AI model not loaded");
-      return;
-    }
+    const shouldUseWebSearch = enableSearch !== undefined ? enableSearch : webSearchEnabled;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: content.trim(),
       timestamp: Date.now(),
+      webSearchEnabled: shouldUseWebSearch,
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -88,32 +41,24 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     setError(null);
 
     try {
-      // Prepare context from article
-      const cleanContent = articleContent
-        .replace(/<[^>]*>/g, " ")
-        .replace(/\[[0-9]+\]/g, "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .substring(0, 2000); // Limit context for speed
-
-      const prompt = `You are a helpful assistant answering questions about an article.
-
-Article Title: "${articleTitle}"
-
-Article Content:
-${cleanContent}
-
-User Question: ${content}
-
-Answer based only on the article content above. Be concise and factual.`;
-
-      const reply = await engineRef.current.chat.completions.create({
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.3,
-        max_tokens: 300,
+      const response = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          articleContent,
+          articleTitle,
+          question: content.trim(),
+          enableWebSearch: shouldUseWebSearch,
+        }),
       });
 
-      const answer = reply.choices[0]?.message?.content || "I couldn't generate a response.";
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to get response");
+      }
+
+      const data = await response.json();
+      const answer = data.response || "I'm sorry, I couldn't generate a response.";
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -123,9 +68,9 @@ Answer based only on the article content above. Be concise and factual.`;
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error generating response:", err);
-      setError("Failed to generate response. Please try again.");
+      setError(err.message || "Failed to generate response. Please try again.");
 
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -138,17 +83,125 @@ Answer based only on the article content above. Be concise and factual.`;
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, initializeModels, articleTitle, articleContent]);
+  }, [isLoading, articleTitle, articleContent, webSearchEnabled]);
 
   // Generate summary
   const generateSummary = useCallback(async () => {
-    await sendMessage("Please provide a concise summary of this article in 3-4 sentences.");
-  }, [sendMessage]);
+    if (isLoading || !articleContent || !articleTitle) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: "Summarize this article",
+      timestamp: Date.now(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+
+    try {
+      const response = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          articleContent,
+          articleTitle,
+          action: "summarize",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate summary");
+      }
+
+      const data = await response.json();
+      const summary = data.response || "Could not generate summary.";
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: summary,
+        timestamp: Date.now(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (err) {
+      console.error("Error generating summary:", err);
+      setError("Failed to generate summary.");
+
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "I'm sorry, I couldn't generate a summary. Please try again.",
+        timestamp: Date.now(),
+      };
+
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading, articleTitle, articleContent]);
 
   // Generate quiz
   const generateQuiz = useCallback(async () => {
-    await sendMessage("Create 3 multiple choice questions to test my understanding of this article.");
-  }, [sendMessage]);
+    if (isLoading || !articleContent || !articleTitle) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: "Generate quiz questions",
+      timestamp: Date.now(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+
+    try {
+      const response = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          articleContent,
+          articleTitle,
+          action: "quiz",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate quiz");
+      }
+
+      const data = await response.json();
+      const quiz = data.response || "Could not generate quiz.";
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: quiz,
+        timestamp: Date.now(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (err) {
+      console.error("Error generating quiz:", err);
+      setError("Failed to generate quiz.");
+
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "I'm sorry, I couldn't generate quiz questions. Please try again.",
+        timestamp: Date.now(),
+      };
+
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading, articleTitle, articleContent]);
 
   // Clear chat
   const clearChat = useCallback(() => {
@@ -156,16 +209,21 @@ Answer based only on the article content above. Be concise and factual.`;
     setError(null);
   }, []);
 
+  // Toggle web search
+  const toggleWebSearch = useCallback(() => {
+    setWebSearchEnabled((prev) => !prev);
+  }, []);
+
   return {
     messages,
     isLoading,
-    isInitializing,
+    isInitializing: false,
     error,
-    initProgress,
+    webSearchEnabled,
     sendMessage,
     generateSummary,
     generateQuiz,
     clearChat,
-    initializeModels,
+    toggleWebSearch,
   };
 }
