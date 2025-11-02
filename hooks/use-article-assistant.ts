@@ -168,7 +168,7 @@ ${contextContent}`,
   }
 
   async function webSearch(query: string) {
-    if (!query?.trim() || isLoading || !engineRef.current) return;
+    if (!query?.trim() || isLoading) return;
 
     setIsLoading(true);
     setError(null);
@@ -183,7 +183,7 @@ ${contextContent}`,
     setMessages((prev) => [...prev, userMsg]);
 
     try {
-      // Call LangSearch API
+      // Call LangSearch API - returns web search results ONLY
       const response = await fetch('/api/assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -199,48 +199,8 @@ ${contextContent}`,
 
       const { webSearchResults } = await response.json();
 
-      // Combine web results with article context
-      const cleanContent = articleContent
-        .replace(/<[^>]*>/g, " ")
-        .replace(/\[[0-9]+\]/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      const contextContent = cleanContent.length > 8000
-        ? cleanContent.substring(0, 8000) + "\n\n[Article continues...]"
-        : cleanContent;
-
-      const fullContext = webSearchResults
-        ? `ARTICLE:\n${contextContent}\n\n${webSearchResults}`
-        : contextContent;
-
-      console.log(`📄 Context: ${fullContext.length} chars (with web search)`);
-
-      // Generate response with combined context
-      const completion = await engineRef.current.chat.completions.create({
-        messages: [
-          {
-            role: "system",
-            content: `You are analyzing: "${articleTitle}"
-
-RULES:
-1. Answer using BOTH the article AND recent web findings below
-2. Cite sources when using web findings
-3. Be accurate and comprehensive
-4. Combine information intelligently
-
-${fullContext}`,
-          },
-          {
-            role: "user",
-            content: query.trim(),
-          },
-        ],
-        temperature: 0.3,
-        max_tokens: 600,
-      });
-
-      const answer = completion.choices[0]?.message?.content || "No response";
+      // Display web search results directly (NO LLM processing)
+      const answer = webSearchResults || "No web results found.";
 
       setMessages((prev) => [
         ...prev,
