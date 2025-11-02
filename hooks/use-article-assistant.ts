@@ -30,11 +30,11 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
     async function initEngine() {
       try {
-        console.log("🚀 Initializing Phi-3.5-mini...");
+        console.log("🚀 Initializing Llama 3.2 1B...");
         setInitProgress("Initializing WebLLM...");
 
-        // Phi-3.5-mini with require-corp headers
-        let modelName = "Phi-3.5-mini-instruct-q4f16_1-MLC";
+        // Llama 3.2 1B with require-corp headers
+        let modelName = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
 
         console.log(`📦 Attempting to load model: ${modelName}`);
         setInitProgress("Connecting to model server...");
