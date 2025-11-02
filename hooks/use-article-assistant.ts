@@ -87,7 +87,12 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
             pooling: "mean",
             normalize: true,
           });
-          chunks[i].embedding = Array.from(output.data) as number[];
+
+          if (output?.data) {
+            chunks[i].embedding = Array.from(output.data) as number[];
+          } else {
+            console.warn(`Failed to embed chunk ${i}`);
+          }
 
           if (i % 10 === 0) {
             setInitProgress(`Embedded ${i + 1}/${chunks.length} chunks...`);
@@ -150,6 +155,12 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         pooling: "mean",
         normalize: true,
       });
+
+      if (!queryOutput?.data) {
+        console.error("Query embedding failed - no data");
+        return [];
+      }
+
       const queryEmbedding = Array.from(queryOutput.data) as number[];
 
       // Calculate similarity scores (filter out chunks without embeddings)
