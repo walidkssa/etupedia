@@ -77,7 +77,7 @@ const nextConfig: NextConfig = {
     return config;
   },
   // Security headers for WebGPU and WebLLM
-  // IMPORTANT: require-corp is needed for WebLLM but breaks external images
+  // IMPORTANT: credentialless mode allows WebGPU while not breaking CDN downloads
   async headers() {
     return [
       {
@@ -85,7 +85,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Cross-Origin-Embedder-Policy',
-            value: 'require-corp',
+            value: 'credentialless',
           },
           {
             key: 'Cross-Origin-Opener-Policy',
