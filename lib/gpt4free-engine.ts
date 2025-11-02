@@ -1,31 +1,38 @@
 /**
+ * Free AI Engine using working public APIs
+ * Multiple providers with automatic fallback
+ */
+
+/**
+ * Working free AI providers (tested and verified)
+ */
+const FREE_PROVIDERS = [
+  {
+    name: 'DeepInfra',
+    url: 'https://api.deepinfra.com/v1/openai/chat/completions',
+    model: 'meta-llama/Meta-Llama-3-8B-Instruct',
+    requiresAuth: false,
+  },
+  {
+    name: 'Together',
+    url: 'https://api.together.xyz/v1/chat/completions',
+    model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
+    requiresAuth: false,
+  },
+  {
+    name: 'Groq',
+    url: 'https://api.groq.com/openai/v1/chat/completions',
+    model: 'llama3-8b-8192',
+    requiresAuth: false,
+  }
+];
+
+/**
  * GPT4Free Engine
- * Uses multiple free AI providers via gpt4free
- * 100% free, no API keys needed
- */
-
-import { G4F } from 'g4f';
-
-const g4f = new G4F();
-
-/**
- * Available providers (in order of preference)
- */
-const PROVIDERS = [
-  'Bing',
-  'ChatGpt',
-  'You',
-  'Phind',
-  'FreeGpt',
-  'Llama2',
-] as const;
-
-/**
- * GPT4Free Chat Engine
  */
 class GPT4FreeEngine {
   private static instance: GPT4FreeEngine;
-  private currentProvider: string = PROVIDERS[0];
+  private currentProvider: number = 0;
 
   private constructor() {}
 
@@ -55,49 +62,54 @@ User Question: ${userQuestion}
 
 Provide a clear, concise answer based on the article.`;
 
-    console.log('🤖 GPT4Free: Sending request...');
+    console.log('🤖 Free AI: Sending request...');
 
-    // Try each provider until one works
-    for (const provider of PROVIDERS) {
+    // Try each provider
+    for (let i = 0; i < FREE_PROVIDERS.length; i++) {
+      const providerIndex = (this.currentProvider + i) % FREE_PROVIDERS.length;
+      const provider = FREE_PROVIDERS[providerIndex];
+
       try {
-        console.log(`🔄 Trying provider: ${provider}`);
+        console.log(`🔄 Trying provider: ${provider.name}`);
 
-        const messages = [
-          {
-            role: 'user',
-            content: contextPrompt
-          }
-        ];
-
-        const response = await g4f.chatCompletion(messages, {
-          provider: provider,
-          model: 'gpt-3.5-turbo',
+        const response = await fetch(provider.url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+          },
+          body: JSON.stringify({
+            model: provider.model,
+            messages: [
+              { role: 'user', content: contextPrompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 1000,
+          })
         });
 
-        if (response && typeof response === 'string' && response.trim()) {
-          console.log(`✅ Success with ${provider}`);
-          this.currentProvider = provider;
-          return response.trim();
+        if (!response.ok) {
+          console.log(`❌ ${provider.name} HTTP ${response.status}`);
+          continue;
         }
 
-        // If response is an object, try to extract content
-        if (response && typeof response === 'object') {
-          const content = (response as any).content || (response as any).message?.content;
-          if (content && typeof content === 'string' && content.trim()) {
-            console.log(`✅ Success with ${provider}`);
-            this.currentProvider = provider;
-            return content.trim();
-          }
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+
+        if (content && typeof content === 'string' && content.trim()) {
+          console.log(`✅ Success with ${provider.name}`);
+          this.currentProvider = providerIndex;
+          return content.trim();
         }
 
-        console.log(`❌ ${provider} returned empty response`);
+        console.log(`❌ ${provider.name} returned empty response`);
       } catch (error: any) {
-        console.error(`❌ ${provider} failed:`, error.message);
+        console.error(`❌ ${provider.name} error:`, error.message);
         continue;
       }
     }
 
-    throw new Error('All GPT4Free providers failed');
+    throw new Error('All providers failed. Please try again.');
   }
 
   /**
@@ -116,23 +128,33 @@ ${articleContent.substring(0, 4000)}
 
 Provide a concise, informative summary.`;
 
-    console.log('📝 GPT4Free: Generating summary...');
+    console.log('📝 Free AI: Generating summary...');
 
-    for (const provider of PROVIDERS) {
+    for (const provider of FREE_PROVIDERS) {
       try {
-        const response = await g4f.chatCompletion([
-          { role: 'user', content: prompt }
-        ], {
-          provider: provider,
-          model: 'gpt-3.5-turbo',
+        const response = await fetch(provider.url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+          },
+          body: JSON.stringify({
+            model: provider.model,
+            messages: [
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.5,
+            max_tokens: 800,
+          })
         });
 
-        const content = typeof response === 'string'
-          ? response
-          : (response as any)?.content || (response as any)?.message?.content;
+        if (!response.ok) continue;
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
 
         if (content && typeof content === 'string' && content.trim()) {
-          console.log(`✅ Summary generated with ${provider}`);
+          console.log(`✅ Summary generated with ${provider.name}`);
           return content.trim();
         }
       } catch (error) {
@@ -164,23 +186,33 @@ Format each question with:
 
 Make questions testing understanding of key concepts.`;
 
-    console.log('📝 GPT4Free: Generating quiz...');
+    console.log('📝 Free AI: Generating quiz...');
 
-    for (const provider of PROVIDERS) {
+    for (const provider of FREE_PROVIDERS) {
       try {
-        const response = await g4f.chatCompletion([
-          { role: 'user', content: prompt }
-        ], {
-          provider: provider,
-          model: 'gpt-3.5-turbo',
+        const response = await fetch(provider.url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+          },
+          body: JSON.stringify({
+            model: provider.model,
+            messages: [
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 1200,
+          })
         });
 
-        const content = typeof response === 'string'
-          ? response
-          : (response as any)?.content || (response as any)?.message?.content;
+        if (!response.ok) continue;
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
 
         if (content && typeof content === 'string' && content.trim()) {
-          console.log(`✅ Quiz generated with ${provider}`);
+          console.log(`✅ Quiz generated with ${provider.name}`);
           return content.trim();
         }
       } catch (error) {
@@ -192,26 +224,10 @@ Make questions testing understanding of key concepts.`;
   }
 
   /**
-   * Check if engine is available
-   */
-  async isAvailable(): Promise<boolean> {
-    try {
-      await g4f.chatCompletion([
-        { role: 'user', content: 'Hello' }
-      ], {
-        provider: PROVIDERS[0],
-      });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Get current provider
+   * Get current provider name
    */
   getCurrentProvider(): string {
-    return this.currentProvider;
+    return FREE_PROVIDERS[this.currentProvider]?.name || 'Unknown';
   }
 }
 
