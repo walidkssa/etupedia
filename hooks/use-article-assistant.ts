@@ -36,22 +36,40 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         setIsInitializing(true);
         setInitProgress("Loading Phi-4 model...");
 
-        const engine = await webllm.CreateMLCEngine(
-          "Phi-3.5-mini-instruct-q4f16_1-MLC",
-          {
-            initProgressCallback: (progress) => {
-              console.log("📦 Progress:", progress);
-              setInitProgress(progress.text || "Loading...");
-            },
-          }
-        );
+        // Try Phi-4-mini first, fallback to Phi-3.5 if not available
+        let modelId = "Phi-4-mini-instruct-q4f16_1-MLC";
 
-        engineRef.current = engine;
-        console.log("✅ Phi-4 loaded successfully!");
+        try {
+          const engine = await webllm.CreateMLCEngine(
+            modelId,
+            {
+              initProgressCallback: (progress) => {
+                console.log("📦 Progress:", progress);
+                setInitProgress(progress.text || "Loading...");
+              },
+            }
+          );
+          engineRef.current = engine;
+        } catch (err) {
+          console.log("⚠️ Phi-4-mini not available, trying Phi-3.5...");
+          modelId = "Phi-3.5-mini-instruct-q4f16_1-MLC";
+          const engine = await webllm.CreateMLCEngine(
+            modelId,
+            {
+              initProgressCallback: (progress) => {
+                console.log("📦 Progress:", progress);
+                setInitProgress(progress.text || "Loading...");
+              },
+            }
+          );
+          engineRef.current = engine;
+        }
+
+        console.log(`✅ Model loaded successfully: ${modelId}`);
         setInitProgress("Ready!");
         setIsInitializing(false);
       } catch (err: any) {
-        console.error("❌ Failed to load Phi-4:", err);
+        console.error("❌ Failed to load model:", err);
         setError("Failed to initialize AI model");
         setIsInitializing(false);
       }
