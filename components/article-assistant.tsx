@@ -26,6 +26,7 @@ export function ArticleAssistant({
     isLoading,
     isInitializing,
     error,
+    initProgress,
     sendMessage,
     generateSummary,
     generateQuiz,
@@ -121,9 +122,14 @@ export function ArticleAssistant({
         {isInitializing && messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mb-4"></div>
-            <p className="text-sm font-medium">Loading AI Models...</p>
+            <p className="text-sm font-medium">Loading AI Model...</p>
+            {initProgress && (
+              <p className="text-xs text-muted-foreground mt-2 max-w-xs">
+                {initProgress}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground mt-2">
-              This may take a moment on first load
+              100% free • No limits • Runs in your browser
             </p>
           </div>
         )}
