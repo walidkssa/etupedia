@@ -6,7 +6,7 @@ import { CreateMLCEngine } from "@mlc-ai/web-llm";
 // Extend Navigator type for WebGPU support
 declare global {
   interface Navigator {
-    gpu?: GPU;
+    gpu?: any;
   }
 }
 
