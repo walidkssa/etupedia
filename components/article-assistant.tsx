@@ -27,12 +27,10 @@ export function ArticleAssistant({
     isInitializing,
     initProgress,
     error,
-    webSearchEnabled,
     sendMessage,
     generateSummary,
     generateQuiz,
     clearChat,
-    toggleWebSearch,
   } = useArticleAssistant({
     articleTitle,
     articleContent,
@@ -95,17 +93,6 @@ export function ArticleAssistant({
             className="px-3 py-1.5 text-xs rounded-lg bg-accent hover:bg-accent/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Quiz Me
-          </button>
-          <button
-            onClick={toggleWebSearch}
-            className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-              webSearchEnabled
-                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                : 'bg-accent hover:bg-accent/80'
-            }`}
-            title="Enable web search for latest information"
-          >
-            {webSearchEnabled ? '🌐 Web Search ON' : '🌐 Web Search'}
           </button>
           <button
             onClick={clearChat}

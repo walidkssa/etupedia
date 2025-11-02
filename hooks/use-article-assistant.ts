@@ -5,7 +5,7 @@ import * as webllm from "@mlc-ai/web-llm";
 
 interface Message {
   id: string;
-  role: "user" | "assistant" | "system";
+  role: "user" | "assistant";
   content: string;
   timestamp: number;
 }
@@ -19,25 +19,23 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [initProgress, setInitProgress] = useState("");
 
   const engineRef = useRef<webllm.MLCEngine | null>(null);
-  const processingRef = useRef(false);
 
-  // Initialize model
+  // Initialize model once
   useEffect(() => {
     let mounted = true;
 
     async function init() {
       if (typeof window === "undefined") return;
 
-      console.log("🚀 Init model");
+      console.log("🚀 Starting model initialization");
 
       if (!("gpu" in navigator)) {
         if (mounted) {
-          setError("WebGPU not supported");
+          setError("WebGPU not supported. Use Chrome 113+");
           setIsInitializing(false);
         }
         return;
@@ -47,19 +45,23 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         if (mounted) setInitProgress("Checking WebGPU...");
 
         const adapter = await (navigator.gpu as any).requestAdapter();
-        if (!adapter) throw new Error("No adapter");
+        if (!adapter) throw new Error("No WebGPU adapter");
 
-        console.log("✅ WebGPU OK");
+        console.log("✅ WebGPU available");
 
-        if (mounted) setInitProgress("Loading model...");
+        if (mounted) setInitProgress("Loading Phi-3.5 Mini...");
 
         const engine = await webllm.CreateMLCEngine(
           "Phi-3.5-mini-instruct-q4f16_1-MLC",
           {
-            initProgressCallback: (r) => {
+            initProgressCallback: (report) => {
               if (!mounted) return;
-              if (r.text) setInitProgress(r.text);
-              else if (r.progress) setInitProgress(`${Math.round(r.progress * 100)}%`);
+              console.log("Progress:", report);
+              if (report.text) {
+                setInitProgress(report.text);
+              } else if (report.progress) {
+                setInitProgress(`Loading: ${Math.round(report.progress * 100)}%`);
+              }
             },
           }
         );
@@ -69,12 +71,13 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         engineRef.current = engine;
         setIsInitializing(false);
         setInitProgress("");
-        console.log("✅ Model loaded!");
+        console.log("✅ MODEL LOADED SUCCESSFULLY");
+        console.log("Engine:", engineRef.current);
 
       } catch (err: any) {
-        console.error("❌", err);
+        console.error("❌ Init error:", err);
         if (mounted) {
-          setError(err.message || "Failed to load");
+          setError(err.message || "Failed to load model");
           setIsInitializing(false);
         }
       }
@@ -84,313 +87,221 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     return () => { mounted = false; };
   }, []);
 
-  // Handler refs that are always up to date
-  const handlersRef = useRef({
-    sendMessage: async (content: string, enableSearch?: boolean) => {
-      console.log("🔵 SEND:", content);
+  // Send message - simple async function
+  async function sendMessage(content: string) {
+    console.log("\n=== SEND MESSAGE ===");
+    console.log("Content:", content);
+    console.log("Engine exists:", !!engineRef.current);
+    console.log("Is loading:", isLoading);
 
-      if (!content?.trim()) return;
-      if (!engineRef.current) {
-        setError("Model loading...");
-        return;
-      }
-      if (processingRef.current) return;
-      if (!articleContent || !articleTitle) return;
+    if (!content?.trim()) {
+      console.log("❌ Empty content");
+      return;
+    }
 
-      processingRef.current = true;
-      setIsLoading(true);
-      setError(null);
+    if (!engineRef.current) {
+      console.log("❌ No engine");
+      setError("Model still loading...");
+      return;
+    }
 
-      setMessages(prev => [...prev, {
-        id: `u${Date.now()}`,
-        role: "user",
-        content: content.trim(),
-        timestamp: Date.now(),
-      }]);
+    if (isLoading) {
+      console.log("❌ Already processing");
+      return;
+    }
 
-      try {
-        let webCtx = "";
+    console.log("✅ Starting processing");
 
-        if (enableSearch ?? webSearchEnabled) {
-          try {
-            const res = await fetch("/api/assistant", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ question: content, enableWebSearch: true }),
-            });
-            if (res.ok) {
-              const data = await res.json();
-              if (data.webSearchResults) webCtx = data.webSearchResults;
-            }
-          } catch (e) {
-            console.warn("Web search failed");
-          }
-        }
+    setIsLoading(true);
+    setError(null);
 
-        const clean = articleContent
-          .replace(/<[^>]*>/g, " ")
-          .replace(/\[[0-9]+\]/g, "")
-          .replace(/\s+/g, " ")
-          .trim()
-          .substring(0, 6000);
-
-        const prompt = `Article: "${articleTitle}"\n\nContent:\n${clean}${webCtx}\n\nAnswer helpfully.`;
-
-        console.log("🤖 Calling AI...");
-
-        const resp = await engineRef.current!.chat.completions.create({
-          messages: [
-            { role: "system", content: prompt },
-            { role: "user", content: content.trim() }
-          ],
-          temperature: 0.5,
-          max_tokens: 1000,
-        });
-
-        const answer = resp.choices[0]?.message?.content || "No response";
-
-        console.log("✅ Response:", answer.substring(0, 50));
-
-        setMessages(prev => [...prev, {
-          id: `a${Date.now()}`,
-          role: "assistant",
-          content: answer,
-          timestamp: Date.now(),
-        }]);
-
-      } catch (err: any) {
-        console.error("❌", err);
-        setError(err.message);
-        setMessages(prev => [...prev, {
-          id: `e${Date.now()}`,
-          role: "assistant",
-          content: "Error. Try again.",
-          timestamp: Date.now(),
-        }]);
-      } finally {
-        processingRef.current = false;
-        setIsLoading(false);
-      }
-    },
-
-    generateSummary: async () => {
-      if (processingRef.current || !engineRef.current) return;
-
-      processingRef.current = true;
-      setIsLoading(true);
-
-      setMessages(prev => [...prev, {
-        id: `u${Date.now()}`,
-        role: "user",
-        content: "Summarize this article",
-        timestamp: Date.now(),
-      }]);
-
-      try {
-        const clean = articleContent
-          .replace(/<[^>]*>/g, " ")
-          .replace(/\[[0-9]+\]/g, "")
-          .replace(/\s+/g, " ")
-          .trim()
-          .substring(0, 4000);
-
-        const resp = await engineRef.current.chat.completions.create({
-          messages: [
-            { role: "system", content: "Summarize in bullet points." },
-            { role: "user", content: `"${articleTitle}"\n\n${clean}` }
-          ],
-          temperature: 0.3,
-          max_tokens: 500,
-        });
-
-        const summary = resp.choices[0]?.message?.content || "No summary";
-
-        setMessages(prev => [...prev, {
-          id: `a${Date.now()}`,
-          role: "assistant",
-          content: summary,
-          timestamp: Date.now(),
-        }]);
-
-      } catch (err) {
-        console.error(err);
-        setMessages(prev => [...prev, {
-          id: `e${Date.now()}`,
-          role: "assistant",
-          content: "Summary failed.",
-          timestamp: Date.now(),
-        }]);
-      } finally {
-        processingRef.current = false;
-        setIsLoading(false);
-      }
-    },
-
-    generateQuiz: async () => {
-      if (processingRef.current || !engineRef.current) return;
-
-      processingRef.current = true;
-      setIsLoading(true);
-
-      setMessages(prev => [...prev, {
-        id: `u${Date.now()}`,
-        role: "user",
-        content: "Generate quiz questions",
-        timestamp: Date.now(),
-      }]);
-
-      try {
-        const clean = articleContent
-          .replace(/<[^>]*>/g, " ")
-          .replace(/\[[0-9]+\]/g, "")
-          .replace(/\s+/g, " ")
-          .trim()
-          .substring(0, 4000);
-
-        const resp = await engineRef.current.chat.completions.create({
-          messages: [
-            { role: "system", content: "Create 3 quiz questions." },
-            { role: "user", content: `"${articleTitle}"\n\n${clean}` }
-          ],
-          temperature: 0.5,
-          max_tokens: 800,
-        });
-
-        const quiz = resp.choices[0]?.message?.content || "No quiz";
-
-        setMessages(prev => [...prev, {
-          id: `a${Date.now()}`,
-          role: "assistant",
-          content: quiz,
-          timestamp: Date.now(),
-        }]);
-
-      } catch (err) {
-        console.error(err);
-        setMessages(prev => [...prev, {
-          id: `e${Date.now()}`,
-          role: "assistant",
-          content: "Quiz failed.",
-          timestamp: Date.now(),
-        }]);
-      } finally {
-        processingRef.current = false;
-        setIsLoading(false);
-      }
-    },
-
-    clearChat: () => {
-      setMessages([]);
-      setError(null);
-    },
-
-    toggleWebSearch: () => {
-      setWebSearchEnabled(prev => !prev);
-    },
-  });
-
-  // Update handler refs whenever dependencies change
-  useEffect(() => {
-    handlersRef.current.sendMessage = async (content: string, enableSearch?: boolean) => {
-      console.log("🔵 SEND:", content);
-
-      if (!content?.trim()) return;
-      if (!engineRef.current) {
-        setError("Model loading...");
-        return;
-      }
-      if (processingRef.current) return;
-      if (!articleContent || !articleTitle) return;
-
-      processingRef.current = true;
-      setIsLoading(true);
-      setError(null);
-
-      setMessages(prev => [...prev, {
-        id: `u${Date.now()}`,
-        role: "user",
-        content: content.trim(),
-        timestamp: Date.now(),
-      }]);
-
-      try {
-        let webCtx = "";
-
-        if (enableSearch ?? webSearchEnabled) {
-          try {
-            const res = await fetch("/api/assistant", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ question: content, enableWebSearch: true }),
-            });
-            if (res.ok) {
-              const data = await res.json();
-              if (data.webSearchResults) webCtx = data.webSearchResults;
-            }
-          } catch (e) {
-            console.warn("Web search failed");
-          }
-        }
-
-        const clean = articleContent
-          .replace(/<[^>]*>/g, " ")
-          .replace(/\[[0-9]+\]/g, "")
-          .replace(/\s+/g, " ")
-          .trim()
-          .substring(0, 6000);
-
-        const prompt = `Article: "${articleTitle}"\n\nContent:\n${clean}${webCtx}\n\nAnswer helpfully.`;
-
-        console.log("🤖 Calling AI...");
-
-        const resp = await engineRef.current!.chat.completions.create({
-          messages: [
-            { role: "system", content: prompt },
-            { role: "user", content: content.trim() }
-          ],
-          temperature: 0.5,
-          max_tokens: 1000,
-        });
-
-        const answer = resp.choices[0]?.message?.content || "No response";
-
-        console.log("✅ Response:", answer.substring(0, 50));
-
-        setMessages(prev => [...prev, {
-          id: `a${Date.now()}`,
-          role: "assistant",
-          content: answer,
-          timestamp: Date.now(),
-        }]);
-
-      } catch (err: any) {
-        console.error("❌", err);
-        setError(err.message);
-        setMessages(prev => [...prev, {
-          id: `e${Date.now()}`,
-          role: "assistant",
-          content: "Error. Try again.",
-          timestamp: Date.now(),
-        }]);
-      } finally {
-        processingRef.current = false;
-        setIsLoading(false);
-      }
+    // Add user message
+    const userMsg: Message = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: content.trim(),
+      timestamp: Date.now(),
     };
-  }, [articleTitle, articleContent, webSearchEnabled]);
 
-  // Return stable function references
+    setMessages(prev => [...prev, userMsg]);
+
+    try {
+      const cleanContent = articleContent
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\[[0-9]+\]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .substring(0, 6000);
+
+      const systemPrompt = `You are a helpful assistant. Answer questions about this article.
+
+Article: "${articleTitle}"
+
+Content: ${cleanContent}
+
+Provide clear, helpful answers.`;
+
+      console.log("🤖 Calling AI model...");
+
+      const response = await engineRef.current.chat.completions.create({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: content.trim() }
+        ],
+        temperature: 0.5,
+        max_tokens: 1000,
+      });
+
+      const answer = response.choices[0]?.message?.content || "No response";
+
+      console.log("✅ Got response:", answer.substring(0, 100));
+
+      // Add assistant message
+      const assistantMsg: Message = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: answer,
+        timestamp: Date.now(),
+      };
+
+      setMessages(prev => [...prev, assistantMsg]);
+
+    } catch (err: any) {
+      console.error("❌ Error:", err);
+      setError(err.message || "Error generating response");
+
+      const errorMsg: Message = {
+        id: `error-${Date.now()}`,
+        role: "assistant",
+        content: "Sorry, an error occurred. Please try again.",
+        timestamp: Date.now(),
+      };
+
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsLoading(false);
+      console.log("=== DONE ===\n");
+    }
+  }
+
+  // Generate summary
+  async function generateSummary() {
+    if (!engineRef.current || isLoading) return;
+
+    setIsLoading(true);
+
+    setMessages(prev => [...prev, {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: "Summarize this article",
+      timestamp: Date.now(),
+    }]);
+
+    try {
+      const cleanContent = articleContent
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\[[0-9]+\]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .substring(0, 4000);
+
+      const response = await engineRef.current.chat.completions.create({
+        messages: [
+          { role: "system", content: "Provide a concise summary in bullet points." },
+          { role: "user", content: `Article: "${articleTitle}"\n\n${cleanContent}` }
+        ],
+        temperature: 0.3,
+        max_tokens: 500,
+      });
+
+      const summary = response.choices[0]?.message?.content || "Could not generate summary";
+
+      setMessages(prev => [...prev, {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: summary,
+        timestamp: Date.now(),
+      }]);
+
+    } catch (err) {
+      console.error(err);
+      setMessages(prev => [...prev, {
+        id: `error-${Date.now()}`,
+        role: "assistant",
+        content: "Failed to generate summary.",
+        timestamp: Date.now(),
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // Generate quiz
+  async function generateQuiz() {
+    if (!engineRef.current || isLoading) return;
+
+    setIsLoading(true);
+
+    setMessages(prev => [...prev, {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: "Generate quiz questions",
+      timestamp: Date.now(),
+    }]);
+
+    try {
+      const cleanContent = articleContent
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\[[0-9]+\]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .substring(0, 4000);
+
+      const response = await engineRef.current.chat.completions.create({
+        messages: [
+          { role: "system", content: "Create 3 multiple-choice questions about the article." },
+          { role: "user", content: `Article: "${articleTitle}"\n\n${cleanContent}` }
+        ],
+        temperature: 0.5,
+        max_tokens: 800,
+      });
+
+      const quiz = response.choices[0]?.message?.content || "Could not generate quiz";
+
+      setMessages(prev => [...prev, {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: quiz,
+        timestamp: Date.now(),
+      }]);
+
+    } catch (err) {
+      console.error(err);
+      setMessages(prev => [...prev, {
+        id: `error-${Date.now()}`,
+        role: "assistant",
+        content: "Failed to generate quiz.",
+        timestamp: Date.now(),
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  function clearChat() {
+    setMessages([]);
+    setError(null);
+  }
+
   return {
     messages,
     isLoading,
     isInitializing,
     initProgress,
     error,
-    webSearchEnabled,
-    sendMessage: (content: string, enableSearch?: boolean) => handlersRef.current.sendMessage(content, enableSearch),
-    generateSummary: () => handlersRef.current.generateSummary(),
-    generateQuiz: () => handlersRef.current.generateQuiz(),
-    clearChat: () => handlersRef.current.clearChat(),
-    toggleWebSearch: () => handlersRef.current.toggleWebSearch(),
+    sendMessage,
+    generateSummary,
+    generateQuiz,
+    clearChat,
   };
 }
