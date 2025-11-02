@@ -30,6 +30,7 @@ export function ArticleAssistant({
     sendMessage,
     generateSummary,
     generateQuiz,
+    webSearch,
     clearChat,
   } = useArticleAssistant({
     articleTitle,
@@ -48,11 +49,17 @@ export function ArticleAssistant({
     }
   }, [isOpen]);
 
+  const [useWebSearch, setUseWebSearch] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    await sendMessage(input);
+    if (useWebSearch) {
+      await webSearch(input);
+    } else {
+      await sendMessage(input);
+    }
     setInput("");
   };
 
@@ -93,6 +100,18 @@ export function ArticleAssistant({
             className="px-3 py-1.5 text-xs rounded-lg bg-accent hover:bg-accent/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Quiz Me
+          </button>
+          <button
+            onClick={() => setUseWebSearch(!useWebSearch)}
+            disabled={isLoading || isInitializing}
+            className={`px-3 py-1.5 text-xs rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              useWebSearch
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'bg-accent hover:bg-accent/80'
+            }`}
+            title="Toggle web search to get latest information from the internet"
+          >
+            {useWebSearch ? '🌐 Web ON' : 'Web Search'}
           </button>
           <button
             onClick={clearChat}
@@ -216,7 +235,13 @@ export function ArticleAssistant({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isInitializing ? "Loading models..." : "Ask a question about this article..."}
+            placeholder={
+              isInitializing
+                ? "Loading models..."
+                : useWebSearch
+                ? "Ask anything (web search enabled)..."
+                : "Ask a question about this article..."
+            }
             disabled={isLoading || isInitializing}
             className="flex-1 px-4 py-2.5 bg-input border border-border rounded-lg outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             autoComplete="off"

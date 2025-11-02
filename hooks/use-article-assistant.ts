@@ -167,6 +167,109 @@ ${contextContent}`,
     await sendMessage("Create 3 quiz questions with answers based on this article.");
   }
 
+  async function webSearch(query: string) {
+    if (!query?.trim() || isLoading || !engineRef.current) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    const userMsg: Message = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: query.trim(),
+      timestamp: Date.now(),
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+
+    try {
+      // Call LangSearch API
+      const response = await fetch('/api/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: query.trim(),
+          enableWebSearch: true,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Web search failed');
+      }
+
+      const { webSearchResults } = await response.json();
+
+      // Combine web results with article context
+      const cleanContent = articleContent
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\[[0-9]+\]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      const contextContent = cleanContent.length > 8000
+        ? cleanContent.substring(0, 8000) + "\n\n[Article continues...]"
+        : cleanContent;
+
+      const fullContext = webSearchResults
+        ? `ARTICLE:\n${contextContent}\n\n${webSearchResults}`
+        : contextContent;
+
+      console.log(`📄 Context: ${fullContext.length} chars (with web search)`);
+
+      // Generate response with combined context
+      const completion = await engineRef.current.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: `You are analyzing: "${articleTitle}"
+
+RULES:
+1. Answer using BOTH the article AND recent web findings below
+2. Cite sources when using web findings
+3. Be accurate and comprehensive
+4. Combine information intelligently
+
+${fullContext}`,
+          },
+          {
+            role: "user",
+            content: query.trim(),
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 600,
+      });
+
+      const answer = completion.choices[0]?.message?.content || "No response";
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          content: answer,
+          timestamp: Date.now(),
+        },
+      ]);
+
+    } catch (err: any) {
+      console.error("❌ Web search error:", err);
+      setError(err.message || "Failed to perform web search");
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error-${Date.now()}`,
+          role: "assistant",
+          content: "Error performing web search. Please try again.",
+          timestamp: Date.now(),
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   function clearChat() {
     setMessages([]);
     setError(null);
@@ -181,6 +284,7 @@ ${contextContent}`,
     sendMessage,
     generateSummary,
     generateQuiz,
+    webSearch,
     clearChat,
   };
 }
