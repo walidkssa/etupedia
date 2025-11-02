@@ -119,8 +119,8 @@ export function ArticleAssistant({
               {initProgress || "Initializing..."}
             </p>
             <div className="text-xs text-muted-foreground/60 space-y-1 max-w-xs">
-              <p>🤖 Google Gemma-2-2B</p>
-              <p>⏱️ First load: ~1 minute</p>
+              <p>🦙 Llama 3.2 1B</p>
+              <p>⏱️ First load: ~30 seconds</p>
               <p>💾 Cached for instant reload</p>
             </div>
           </div>
@@ -151,7 +151,7 @@ export function ArticleAssistant({
               Ask me anything about this article, request a summary, or test your knowledge with a quiz!
             </p>
             <p className="text-xs text-primary/70 mt-3">
-              ✓ Google Gemma-2-2B • 100% Local & Private
+              ✓ Llama 3.2 1B • 100% Local & Private
             </p>
           </div>
         )}
@@ -238,7 +238,7 @@ export function ArticleAssistant({
           </button>
         </form>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          Powered by Google Gemma-2-2B • Runs locally in your browser
+          Powered by Llama 3.2 1B • Runs locally in your browser
         </p>
       </div>
     </div>

@@ -25,7 +25,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
   const engineRef = useRef<any>(null);
   const initPromiseRef = useRef<Promise<void> | null>(null);
 
-  // Initialize Gemma-2-2B (Google's efficient model)
+  // Initialize Llama 3.2 1B
   useEffect(() => {
     if (initPromiseRef.current) return;
 
@@ -33,10 +33,10 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
     const initEngine = async () => {
       try {
-        console.log("🚀 Initializing Gemma-2-2B...");
+        console.log("🚀 Initializing Llama 3.2 1B...");
         setInitProgress("Loading AI model...");
 
-        const engine = await CreateMLCEngine("gemma-2-2b-it-q4f16_1-MLC", {
+        const engine = await CreateMLCEngine("Llama-3.2-1B-Instruct-q4f16_1-MLC", {
           initProgressCallback: (progress) => {
             if (!mounted) return;
 
@@ -98,14 +98,14 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         .replace(/\s+/g, " ")
         .trim();
 
-      // Gemma-2-2B has 8K context - use reasonable chunk
-      const contextContent = cleanContent.length > 20000
-        ? cleanContent.substring(0, 20000) + "\n[...]"
+      // Llama 3.2 has 128K context - use larger chunk
+      const contextContent = cleanContent.length > 30000
+        ? cleanContent.substring(0, 30000) + "\n[...]"
         : cleanContent;
 
       console.log(`📄 Using ${contextContent.length} chars`);
 
-      // Generate response with Gemma-2-2B
+      // Generate response with Llama 3.2 1B
       const completion = await engineRef.current.chat.completions.create({
         messages: [
           {
