@@ -59,7 +59,25 @@ const nextConfig: NextConfig = {
   },
   // Empty turbopack config to silence warning
   turbopack: {},
-  serverExternalPackages: ['@xenova/transformers'],
+  serverExternalPackages: ['@huggingface/transformers', 'onnxruntime-node', 'sharp'],
+  // Configure headers to allow loading AI models from Hugging Face CDN
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'credentialless',
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

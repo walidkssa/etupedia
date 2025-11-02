@@ -32,9 +32,6 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     if (isInitializedRef.current || isInitializing) return;
     if (!articleContent || !articleTitle) return;
 
-    // Only run in browser
-    if (typeof window === 'undefined') return;
-
     isInitializedRef.current = true;
     setIsInitializing(true);
     setError(null);
@@ -43,20 +40,11 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
       console.log("Loading AI models...");
 
       // Dynamically import transformers (client-side only)
-      let transformers;
-      try {
-        transformers = await import("@xenova/transformers");
-      } catch (importError) {
-        console.error("Failed to import transformers:", importError);
-        throw new Error("Failed to load AI library");
-      }
+      const { pipeline, env } = await import("@huggingface/transformers");
 
-      const { pipeline, env } = transformers;
-
-      // Disable local model loading for faster performance
-      if (env) {
-        env.allowLocalModels = false;
-      }
+      // Configure for browser usage
+      env.allowLocalModels = false;
+      env.useBrowserCache = true;
 
       // Load embedding model for RAG (smaller, faster)
       if (!embeddingsRef.current) {
