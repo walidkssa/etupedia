@@ -59,11 +59,12 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
           throw new Error("WebGPU is not available. Please use a Chromium-based browser (Chrome, Edge, Brave) version 113+.");
         }
 
-        setInitProgress("Preparing Mistral 7B Instruct model...");
+        setInitProgress("Downloading AI model (Llama 3.2 1B)...");
 
-        // Create engine with optimized settings for large models
+        // Use Llama-3.2-1B-Instruct - much smaller and more reliable than Mistral 7B
+        // Only ~600MB instead of 4GB, perfect for browser deployment
         const engine = await webllm.CreateMLCEngine(
-          "Mistral-7B-Instruct-v0.3-q4f16_1-MLC",
+          "Llama-3.2-1B-Instruct-q4f16_1-MLC",
           {
             initProgressCallback: (progress) => {
               console.log("Model loading progress:", progress);
@@ -71,7 +72,8 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
               if (progress.text) {
                 setInitProgress(progress.text);
               } else if (progress.progress) {
-                setInitProgress(`Loading model: ${Math.round(progress.progress * 100)}%`);
+                const percent = Math.round(progress.progress * 100);
+                setInitProgress(`Downloading model: ${percent}%`);
               }
             },
             logLevel: "INFO",
@@ -82,19 +84,19 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         engineRef.current = engine;
         setIsInitializing(false);
         setInitProgress("");
-        console.log("Mistral 7B Instruct loaded successfully!");
+        console.log("Llama 3.2 1B loaded successfully!");
 
       } catch (err: any) {
         clearTimeout(timeoutId);
-        console.error("Error initializing Mistral 7B:", err);
+        console.error("Error initializing AI model:", err);
 
         // Provide detailed error message
-        let errorMsg = "Failed to load Mistral 7B Instruct model. ";
+        let errorMsg = "Failed to load AI model. ";
 
         if (err.message?.includes("WebGPU") || err.message?.includes("adapter")) {
           errorMsg += "WebGPU is not available. Please use Chrome 113+, Edge 113+, or another Chromium-based browser.";
         } else if (err.message?.includes("Cache") || err.message?.includes("network") || err.message?.includes("fetch")) {
-          errorMsg += "Network error occurred. This model is ~4GB and requires a stable internet connection. Please check your connection and try refreshing the page.";
+          errorMsg += "Network error occurred. Please check your internet connection and try refreshing the page.";
         } else if (err.message?.includes("out of memory") || err.message?.includes("OOM")) {
           errorMsg += "Your device ran out of memory. Please close other tabs and try again.";
         } else {
