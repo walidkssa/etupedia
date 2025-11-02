@@ -119,7 +119,7 @@ export function ArticleAssistant({
               {initProgress || "Initializing..."}
             </p>
             <div className="text-xs text-muted-foreground/60 space-y-1 max-w-xs">
-              <p>🔍 Semantic Search + 🤖 SmolLM2-1.7B</p>
+              <p>🤖 SmolLM2-1.7B Language Model</p>
               <p>⏱️ First load: 1-2 minutes</p>
               <p>💾 Cached after first load</p>
             </div>
@@ -151,7 +151,7 @@ export function ArticleAssistant({
               Ask me anything about this article, request a summary, or test your knowledge with a quiz!
             </p>
             <p className="text-xs text-primary/70 mt-3">
-              ✓ SmolLM2-1.7B + Semantic Search • 100% Local & Private
+              ✓ SmolLM2-1.7B • 100% Local & Private
             </p>
           </div>
         )}
@@ -238,7 +238,7 @@ export function ArticleAssistant({
           </button>
         </form>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          SmolLM2-1.7B + Semantic Search • Runs locally in your browser
+          Powered by SmolLM2-1.7B • Runs locally in your browser
         </p>
       </div>
     </div>

@@ -2,13 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { CreateMLCEngine } from "@mlc-ai/web-llm";
-import { pipeline, cos_sim, env } from "@xenova/transformers";
-
-// Configure Transformers.js for browser
-if (typeof window !== "undefined") {
-  env.allowLocalModels = false;
-  env.allowRemoteModels = true;
-}
 
 interface Message {
   id: string;
@@ -22,11 +15,6 @@ interface UseArticleAssistantProps {
   articleContent: string;
 }
 
-interface ArticleChunk {
-  text: string;
-  embedding?: number[];
-}
-
 export function useArticleAssistant({ articleTitle, articleContent }: UseArticleAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,95 +23,18 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
   const [initProgress, setInitProgress] = useState("");
 
   const engineRef = useRef<any>(null);
-  const embedderRef = useRef<any>(null);
-  const chunksRef = useRef<ArticleChunk[]>([]);
   const initPromiseRef = useRef<Promise<void> | null>(null);
 
-  // Initialize models
+  // Initialize SmolLM2-1.7B
   useEffect(() => {
     if (initPromiseRef.current) return;
 
     let mounted = true;
 
-    const initModels = async () => {
+    const initEngine = async () => {
       try {
-        console.log("🚀 Initializing AI models...");
-
-        // Step 1: Initialize embeddings model for semantic search
-        setInitProgress("Loading semantic search model...");
-        console.log("📦 Loading MiniLM embeddings model (small & fast)");
-
-        const embedder = await pipeline(
-          "feature-extraction",
-          "Xenova/all-MiniLM-L6-v2",
-          {
-            progress_callback: (progress: any) => {
-              if (progress.status === "progress") {
-                console.log(`Embeddings: ${progress.file} - ${Math.round((progress.loaded / progress.total) * 100)}%`);
-              }
-            }
-          }
-        );
-
-        if (!mounted) return;
-
-        if (!embedder) {
-          throw new Error("Failed to initialize embeddings model");
-        }
-
-        embedderRef.current = embedder;
-        console.log("✅ Embeddings model loaded");
-
-        // Step 2: Process article into chunks with embeddings
-        setInitProgress("Processing article content...");
-        console.log("📄 Chunking and embedding article");
-
-        const cleanContent = articleContent
-          .replace(/<[^>]*>/g, " ")
-          .replace(/\[[0-9]+\]/g, "")
-          .replace(/\s+/g, " ")
-          .trim();
-
-        // Split into chunks of ~500 characters
-        const chunks: ArticleChunk[] = [];
-        const chunkSize = 500;
-        for (let i = 0; i < cleanContent.length; i += chunkSize) {
-          const chunk = cleanContent.substring(i, i + chunkSize);
-          if (chunk.trim().length > 50) { // Skip very small chunks
-            chunks.push({ text: chunk.trim() });
-          }
-        }
-
-        console.log(`📊 Created ${chunks.length} chunks`);
-
-        // Generate embeddings for all chunks
-        setInitProgress(`Embedding ${chunks.length} text chunks...`);
-        for (let i = 0; i < chunks.length; i++) {
-          if (!mounted) return;
-
-          const output = await embedder(chunks[i].text, {
-            pooling: "mean",
-            normalize: true,
-          });
-
-          if (output?.data) {
-            chunks[i].embedding = Array.from(output.data) as number[];
-          } else {
-            console.warn(`Failed to embed chunk ${i}`);
-          }
-
-          if (i % 10 === 0) {
-            setInitProgress(`Embedded ${i + 1}/${chunks.length} chunks...`);
-          }
-        }
-
-        chunksRef.current = chunks;
-        console.log("✅ All chunks embedded");
-
-        // Step 3: Initialize SmolLM2-1.7B
-        if (!mounted) return;
+        console.log("🚀 Initializing SmolLM2-1.7B...");
         setInitProgress("Loading SmolLM2-1.7B...");
-        console.log("🤖 Loading SmolLM2-1.7B");
 
         const engine = await CreateMLCEngine("SmolLM2-1.7B-Instruct-q4f16_1-MLC", {
           initProgressCallback: (progress) => {
@@ -134,88 +45,40 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
               setInitProgress(progress.text);
             } else if (progress.progress !== undefined) {
               const percent = Math.round(progress.progress * 100);
-              setInitProgress(`Downloading SmolLM2-1.7B: ${percent}%`);
+              setInitProgress(`Downloading model: ${percent}%`);
             }
           },
         });
 
         if (!mounted) return;
+
+        console.log("✅ Model loaded successfully!");
         engineRef.current = engine;
         setIsInitializing(false);
         setInitProgress("");
-        console.log("✅ All models ready!");
 
       } catch (err: any) {
         console.error("❌ Initialization error:", err);
         if (!mounted) return;
 
-        let errorMsg = "Failed to load AI models";
+        let errorMsg = "Failed to load model";
         if (err?.message) {
           errorMsg = err.message;
-        } else if (err?.toString) {
-          errorMsg = err.toString();
         }
-
-        console.error("Full error details:", {
-          message: err?.message,
-          stack: err?.stack,
-          type: typeof err,
-          err
-        });
 
         setError(errorMsg);
         setIsInitializing(false);
       }
     };
 
-    initPromiseRef.current = initModels();
+    initPromiseRef.current = initEngine();
 
     return () => {
       mounted = false;
     };
-  }, [articleContent]);
+  }, []);
 
-  // Semantic search function
-  async function findRelevantChunks(query: string, topK: number = 5): Promise<string[]> {
-    if (!embedderRef.current || chunksRef.current.length === 0) {
-      return [];
-    }
-
-    try {
-      // Generate embedding for the query
-      const queryOutput = await embedderRef.current(query, {
-        pooling: "mean",
-        normalize: true,
-      });
-
-      if (!queryOutput?.data) {
-        console.error("Query embedding failed - no data");
-        return [];
-      }
-
-      const queryEmbedding = Array.from(queryOutput.data) as number[];
-
-      // Calculate similarity scores (filter out chunks without embeddings)
-      const scores = chunksRef.current
-        .map((chunk, idx) => ({
-          idx,
-          score: chunk.embedding ? cos_sim(queryEmbedding, chunk.embedding as number[]) : 0,
-        }))
-        .filter(s => s.score > 0);
-
-      // Sort by score and get top K
-      scores.sort((a, b) => b.score - a.score);
-      const topChunks = scores.slice(0, topK).map((s) => chunksRef.current[s.idx].text);
-
-      console.log(`🔍 Found ${topChunks.length} relevant chunks for query`);
-      return topChunks;
-    } catch (err) {
-      console.error("Semantic search error:", err);
-      return [];
-    }
-  }
-
-  // Send message with semantic search
+  // Send message with article context
   async function sendMessage(content: string) {
     if (!content?.trim() || isLoading || !engineRef.current) return;
 
@@ -232,35 +95,43 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
     setMessages((prev) => [...prev, userMsg]);
 
     try {
-      // Use semantic search to find relevant context
-      const relevantChunks = await findRelevantChunks(content.trim(), 5);
-      const context = relevantChunks.join("\n\n");
+      // Clean article content
+      const cleanContent = articleContent
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\[[0-9]+\]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
 
-      console.log(`📄 Using ${context.length} characters from semantic search`);
+      // Use full article content (SmolLM2 has good context window)
+      const contextContent = cleanContent.length > 30000
+        ? cleanContent.substring(0, 30000) + "\n\n[Article continues...]"
+        : cleanContent;
+
+      console.log(`📄 Context: ${contextContent.length} chars`);
 
       // Generate response with SmolLM2-1.7B
       const completion = await engineRef.current.chat.completions.create({
         messages: [
           {
             role: "system",
-            content: `You are analyzing the Wikipedia article: "${articleTitle}"
+            content: `You are analyzing: "${articleTitle}"
 
-STRICT RULES:
-1. Answer ONLY using the context below
-2. If the answer is not in the context, say "Not found in article"
-3. Be accurate and concise
+RULES:
+1. Answer ONLY from the article below
+2. If not in article, say: "Not in article"
+3. Be concise and accurate
 4. Quote specific parts when relevant
 
-RELEVANT CONTEXT:
-${context}`,
+ARTICLE:
+${contextContent}`,
           },
           {
             role: "user",
             content: content.trim(),
           },
         ],
-        temperature: 0.3,
-        max_tokens: 400,
+        temperature: 0.2,
+        max_tokens: 500,
       });
 
       const answer = completion.choices[0]?.message?.content || "No response";
@@ -293,13 +164,11 @@ ${context}`,
   }
 
   async function generateSummary() {
-    // Use first chunks for summary
-    const topChunks = chunksRef.current.slice(0, 10).map(c => c.text).join("\n\n");
-    await sendMessage(`Based on this content, provide a 5-7 bullet point summary: ${topChunks.substring(0, 2000)}`);
+    await sendMessage("Summarize this article in 5-7 bullet points using ONLY article content.");
   }
 
   async function generateQuiz() {
-    await sendMessage("Create 3 quiz questions with answers based on the article.");
+    await sendMessage("Create 3 quiz questions with answers based ONLY on this article.");
   }
 
   function clearChat() {
