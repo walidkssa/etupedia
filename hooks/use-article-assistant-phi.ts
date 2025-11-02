@@ -3,6 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import { CreateMLCEngine } from "@mlc-ai/web-llm";
 
+// Extend Navigator type for WebGPU support
+declare global {
+  interface Navigator {
+    gpu?: GPU;
+  }
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
