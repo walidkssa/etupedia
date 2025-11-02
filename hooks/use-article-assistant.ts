@@ -59,12 +59,12 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
           throw new Error("WebGPU is not available. Please use a Chromium-based browser (Chrome, Edge, Brave) version 113+.");
         }
 
-        setInitProgress("Downloading AI model (Llama 3.2 1B)...");
+        setInitProgress("Downloading AI model (Phi-4 Mini)...");
 
-        // Use Llama-3.2-1B-Instruct - much smaller and more reliable than Mistral 7B
-        // Only ~600MB instead of 4GB, perfect for browser deployment
+        // Use Phi-4-mini-instruct - Latest Microsoft model, excellent for Q&A and summarization
+        // Optimized for browser deployment with great performance
         const engine = await webllm.CreateMLCEngine(
-          "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+          "Phi-4-mini-instruct-q4f16_1-MLC",
           {
             initProgressCallback: (progress) => {
               console.log("Model loading progress:", progress);
@@ -84,7 +84,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         engineRef.current = engine;
         setIsInitializing(false);
         setInitProgress("");
-        console.log("Llama 3.2 1B loaded successfully!");
+        console.log("Phi-4 Mini loaded successfully!");
 
       } catch (err: any) {
         clearTimeout(timeoutId);
