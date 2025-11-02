@@ -2,7 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import { CreateMLCEngine } from "@mlc-ai/web-llm";
-import { pipeline, cos_sim } from "@xenova/transformers";
+import { pipeline, cos_sim, env } from "@xenova/transformers";
+
+// Configure Transformers.js for browser
+if (typeof window !== "undefined") {
+  env.allowLocalModels = false;
+  env.allowRemoteModels = true;
+}
 
 interface Message {
   id: string;
@@ -49,10 +55,22 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
 
         const embedder = await pipeline(
           "feature-extraction",
-          "Xenova/all-MiniLM-L6-v2"
+          "Xenova/all-MiniLM-L6-v2",
+          {
+            progress_callback: (progress: any) => {
+              if (progress.status === "progress") {
+                console.log(`Embeddings: ${progress.file} - ${Math.round((progress.loaded / progress.total) * 100)}%`);
+              }
+            }
+          }
         );
 
         if (!mounted) return;
+
+        if (!embedder) {
+          throw new Error("Failed to initialize embeddings model");
+        }
+
         embedderRef.current = embedder;
         console.log("✅ Embeddings model loaded");
 
@@ -131,7 +149,21 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         console.error("❌ Initialization error:", err);
         if (!mounted) return;
 
-        setError(err.message || "Failed to load models");
+        let errorMsg = "Failed to load AI models";
+        if (err?.message) {
+          errorMsg = err.message;
+        } else if (err?.toString) {
+          errorMsg = err.toString();
+        }
+
+        console.error("Full error details:", {
+          message: err?.message,
+          stack: err?.stack,
+          type: typeof err,
+          err
+        });
+
+        setError(errorMsg);
         setIsInitializing(false);
       }
     };
