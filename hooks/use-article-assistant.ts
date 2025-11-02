@@ -37,7 +37,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         setInitProgress("Loading Phi-4 model...");
 
         const engine = await webllm.CreateMLCEngine(
-          "Phi-4-mini-4k-instruct-q4f16_1-MLC",
+          "Phi-3.5-mini-instruct-q4f16_1-MLC",
           {
             initProgressCallback: (progress) => {
               console.log("📦 Progress:", progress);
