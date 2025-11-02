@@ -150,12 +150,12 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         pooling: "mean",
         normalize: true,
       });
-      const queryEmbedding = Array.from(queryOutput.data);
+      const queryEmbedding = Array.from(queryOutput.data) as number[];
 
       // Calculate similarity scores
       const scores = chunksRef.current.map((chunk, idx) => ({
         idx,
-        score: cos_sim(queryEmbedding, chunk.embedding!),
+        score: cos_sim(queryEmbedding, chunk.embedding as number[]),
       }));
 
       // Sort by score and get top K
