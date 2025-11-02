@@ -33,7 +33,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         console.log("🚀 Initializing Phi-3.5-mini...");
         setInitProgress("Initializing WebLLM...");
 
-        // Phi-3.5-mini: Best performance/size ratio (400MB, as powerful as 1.5-2B models)
+        // Phi-3.5-mini with require-corp headers
         let modelName = "Phi-3.5-mini-instruct-q4f16_1-MLC";
 
         console.log(`📦 Attempting to load model: ${modelName}`);

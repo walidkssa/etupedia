@@ -77,33 +77,15 @@ const nextConfig: NextConfig = {
     return config;
   },
   // Security headers for WebGPU and WebLLM
+  // IMPORTANT: require-corp is needed for WebLLM but breaks external images
   async headers() {
-    // In development, use require-corp for WebLLM
-    if (process.env.NODE_ENV === 'development') {
-      return [
-        {
-          source: '/:path*',
-          headers: [
-            {
-              key: 'Cross-Origin-Embedder-Policy',
-              value: 'require-corp',
-            },
-            {
-              key: 'Cross-Origin-Opener-Policy',
-              value: 'same-origin',
-            },
-          ],
-        },
-      ];
-    }
-    // In production, use credentialless for better compatibility with external resources
     return [
       {
         source: '/:path*',
         headers: [
           {
             key: 'Cross-Origin-Embedder-Policy',
-            value: 'credentialless',
+            value: 'require-corp',
           },
           {
             key: 'Cross-Origin-Opener-Policy',
