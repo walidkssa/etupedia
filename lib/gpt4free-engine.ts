@@ -10,11 +10,17 @@ import GPT4js from 'gpt4js';
  */
 class GPT4FreeEngine {
   private static instance: GPT4FreeEngine;
-  private gpt4: any;
 
-  private constructor() {
-    this.gpt4 = new GPT4js();
-  }
+  // Available providers with their best models
+  private providers = [
+    { name: 'Nextway', model: 'gpt-4o-free' },
+    { name: 'Blackbox', model: 'blackbox' },
+    { name: 'ChatGpt', model: 'gpt-4o-mini' },
+  ];
+
+  private currentProviderIndex = 0;
+
+  private constructor() {}
 
   static getInstance(): GPT4FreeEngine {
     if (!GPT4FreeEngine.instance) {
@@ -24,25 +30,35 @@ class GPT4FreeEngine {
   }
 
   /**
-   * Use GPT4js with automatic provider/model selection
+   * Try providers with automatic fallback
    */
   private async askGPT(messages: any[]): Promise<string> {
-    try {
-      console.log('🤖 GPT4Free: Using automatic provider/model selection...');
+    const startIndex = this.currentProviderIndex;
 
-      // Let gpt4js choose the best provider and model automatically
-      const response = await this.gpt4.chat(messages);
+    for (let i = 0; i < this.providers.length; i++) {
+      const providerIndex = (startIndex + i) % this.providers.length;
+      const { name, model } = this.providers[providerIndex];
 
-      if (response && typeof response === 'string' && response.trim()) {
-        console.log('✅ Success with GPT4Free');
-        return response.trim();
+      try {
+        console.log(`🔄 Trying provider: ${name} with model: ${model}`);
+
+        const provider = GPT4js.createProvider(name);
+        const options = { provider: name, model };
+
+        const text = await provider.chatCompletion(messages, options);
+
+        if (text && typeof text === 'string' && text.trim()) {
+          console.log(`✅ Success with ${name}`);
+          this.currentProviderIndex = providerIndex;
+          return text.trim();
+        }
+      } catch (error: any) {
+        console.error(`❌ ${name} failed:`, error.message);
+        continue;
       }
-
-      throw new Error('Empty response from GPT4Free');
-    } catch (error: any) {
-      console.error('❌ GPT4Free error:', error.message);
-      throw new Error('GPT4Free failed. Please try again.');
     }
+
+    throw new Error('All GPT4Free providers failed. Please try again.');
   }
 
   /**
@@ -53,19 +69,22 @@ class GPT4FreeEngine {
     articleContent: string,
     userQuestion: string
   ): Promise<string> {
-    const contextPrompt = `You are analyzing this encyclopedia article:
+    const messages = [
+      {
+        role: 'system',
+        content: `You are analyzing this encyclopedia article:
 
 Title: "${articleTitle}"
 
 Content:
 ${articleContent.substring(0, 3000)}
 
-User Question: ${userQuestion}
-
-Provide a clear, concise answer based on the article.`;
-
-    const messages = [
-      { role: 'user', content: contextPrompt }
+Provide clear, concise answers based on the article.`
+      },
+      {
+        role: 'user',
+        content: userQuestion
+      }
     ];
 
     return await this.askGPT(messages);
@@ -78,17 +97,22 @@ Provide a clear, concise answer based on the article.`;
     articleTitle: string,
     articleContent: string
   ): Promise<string> {
-    const prompt = `Summarize this encyclopedia article in 3-5 clear bullet points:
+    const messages = [
+      {
+        role: 'system',
+        content: 'You are a helpful assistant that creates concise summaries.'
+      },
+      {
+        role: 'user',
+        content: `Summarize this encyclopedia article in 3-5 clear bullet points:
 
 Title: "${articleTitle}"
 
 Content:
 ${articleContent.substring(0, 4000)}
 
-Provide a concise, informative summary.`;
-
-    const messages = [
-      { role: 'user', content: prompt }
+Provide a concise, informative summary.`
+      }
     ];
 
     return await this.askGPT(messages);
@@ -101,7 +125,14 @@ Provide a concise, informative summary.`;
     articleTitle: string,
     articleContent: string
   ): Promise<string> {
-    const prompt = `Create 3 multiple-choice questions about this article:
+    const messages = [
+      {
+        role: 'system',
+        content: 'You are a helpful assistant that creates educational quizzes.'
+      },
+      {
+        role: 'user',
+        content: `Create 3 multiple-choice questions about this article:
 
 Title: "${articleTitle}"
 
@@ -113,10 +144,8 @@ Format each question with:
 - 4 options (A, B, C, D)
 - Indicate the correct answer
 
-Make questions testing understanding of key concepts.`;
-
-    const messages = [
-      { role: 'user', content: prompt }
+Make questions testing understanding of key concepts.`
+      }
     ];
 
     return await this.askGPT(messages);
