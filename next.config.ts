@@ -76,6 +76,24 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
+  // CORS headers for WebLLM - using credentialless mode
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'credentialless',
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+        ],
+      },
+    ];
+  },
   // Empty turbopack config to silence warning
   turbopack: {},
 };
