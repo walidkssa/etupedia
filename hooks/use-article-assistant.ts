@@ -59,12 +59,12 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
           throw new Error("WebGPU is not available. Please use a Chromium-based browser (Chrome, Edge, Brave) version 113+.");
         }
 
-        setInitProgress("Downloading AI model (Phi-3 Mini)...");
+        setInitProgress("Downloading AI model (Phi-3.5 Mini)...");
 
-        // Use Phi-3-mini - Microsoft model, excellent for Q&A and summarization
-        // Optimized for browser deployment with great performance
+        // Use Phi-3.5-mini - Latest available Phi model from Microsoft
+        // Superior to Phi-3, excellent for Q&A and summarization
         const engine = await webllm.CreateMLCEngine(
-          "Phi-3-mini-4k-instruct-q4f16_1-MLC",
+          "Phi-3.5-mini-instruct-q4f16_1-MLC",
           {
             initProgressCallback: (progress) => {
               console.log("Model loading progress:", progress);
@@ -84,7 +84,7 @@ export function useArticleAssistant({ articleTitle, articleContent }: UseArticle
         engineRef.current = engine;
         setIsInitializing(false);
         setInitProgress("");
-        console.log("Phi-3 Mini loaded successfully!");
+        console.log("Phi-3.5 Mini loaded successfully!");
 
       } catch (err: any) {
         clearTimeout(timeoutId);
