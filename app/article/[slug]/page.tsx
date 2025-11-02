@@ -10,6 +10,7 @@ import { SearchCommand } from "@/components/search-command";
 import { ArticleContent } from "@/components/article-content";
 import { ArticleHead } from "@/components/article-head";
 import { LanguageSelector } from "@/components/language-selector";
+import { ArticleAssistant } from "@/components/article-assistant";
 import { useLanguage } from "@/hooks/use-language";
 
 export default function ArticlePage() {
@@ -24,6 +25,7 @@ export default function ArticlePage() {
   const [summary, setSummary] = useState<string | null>(null);
   const [summarizing, setSummarizing] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
@@ -271,38 +273,28 @@ export default function ArticlePage() {
             </div>
 
             <div className="flex items-center gap-1 lg:gap-2 shrink-0">
-              {/* Summarize button */}
+              {/* AI Assistant button - Desktop only */}
               <button
-                onClick={handleSummarize}
-                disabled={summarizing}
-                className="flex items-center gap-1 px-2 lg:px-3 py-1.5 lg:py-2 rounded-lg bg-black dark:bg-transparent text-white hover:bg-gray-800 dark:hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-xs lg:text-sm lg:min-w-[130px] justify-center"
+                onClick={() => setAssistantOpen(true)}
+                className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg bg-black dark:bg-transparent text-white hover:bg-gray-800 dark:hover:bg-white/10 transition-colors font-medium text-sm min-w-[130px] justify-center"
                 style={{
                   border: theme === 'dark' ? '2px solid white' : '2px solid transparent'
                 }}
-                aria-label="Summarize article"
-                title="Generate AI summary"
+                aria-label="Open AI Assistant"
+                title="Chat with AI about this article"
               >
-                {summarizing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-3 w-3 lg:h-4 lg:w-4 border-2 border-current border-t-transparent"></div>
-                    <span className="whitespace-nowrap hidden lg:inline">Summarizing...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      className="w-3 h-3 lg:w-4 lg:h-4"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-                    </svg>
-                    <span className="whitespace-nowrap hidden lg:inline">Summarize</span>
-                  </>
-                )}
+                <svg
+                  className="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                <span className="whitespace-nowrap">AI Assistant</span>
               </button>
 
               {/* Language selector */}
@@ -602,6 +594,16 @@ export default function ArticlePage() {
           </main>
         </div>
       </div>
+
+      {/* AI Assistant Panel - Desktop only */}
+      {article && (
+        <ArticleAssistant
+          articleTitle={article.title}
+          articleContent={article.content}
+          isOpen={assistantOpen}
+          onClose={() => setAssistantOpen(false)}
+        />
+      )}
     </div>
   );
 }
