@@ -149,6 +149,28 @@ export default function RootLayout({
         <link rel="icon" href="/icon_dark.png" />
         <link rel="apple-touch-icon" href="/icon_dark.png" />
         <link rel="shortcut icon" href="/icon_dark.png" />
+
+        {/* PWA Meta Tags */}
+        <meta name="application-name" content="Etupedia" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Etupedia" />
+        <meta name="mobile-web-app-capable" content="yes" />
+
+        {/* Service Worker Registration */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('[PWA] Service Worker registered:', reg.scope))
+                    .catch(err => console.error('[PWA] Service Worker registration failed:', err));
+                });
+              }
+            `,
+          }}
+        />
       </head>
       <body
         className={`${spaceGrotesk.variable} ${spaceMono.variable} antialiased`}
