@@ -86,8 +86,7 @@ export function ArticleContent({ content, language = 'en' }: ArticleContentProps
               await navigator.clipboard.writeText(url);
               setCopiedSection(sectionId);
 
-              // Update ONLY the hash - prevents Next.js from reloading the page
-              window.history.replaceState(null, "", `#${sectionId}`);
+              // Don't modify URL at all - just copy to clipboard to prevent reload
 
               setTimeout(() => setCopiedSection(null), 2000);
 

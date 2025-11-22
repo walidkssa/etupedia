@@ -99,10 +99,7 @@ export default function ArticlePage() {
     // Close mobile sidebar
     setSidebarOpen(false);
 
-    // Update ONLY the hash without touching pathname - this prevents Next.js from reloading
-    window.history.replaceState(null, "", `#${sectionId}`);
-
-    // Scroll to element with smooth behavior
+    // Just scroll - don't modify URL at all to prevent any reload
     const element = document.querySelector(`[data-section-id="${sectionId}"]`);
     if (element) {
       const yOffset = -120; // Account for fixed header
