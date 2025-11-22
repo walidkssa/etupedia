@@ -99,18 +99,26 @@ export default function ArticlePage() {
     // Close mobile sidebar
     setSidebarOpen(false);
 
-    // Update URL hash while preserving language parameter
+    // Update URL hash while preserving language parameter - use replaceState to avoid adding to history
     const currentLang = searchParams.get('lang');
     const langParam = currentLang ? `?lang=${currentLang}` : '';
     const newUrl = `/article/${slug}${langParam}#${sectionId}`;
-    window.history.pushState(null, "", newUrl);
+    window.history.replaceState(null, "", newUrl);
 
-    // Scroll to element
+    // Scroll to element with smooth behavior
     const element = document.querySelector(`[data-section-id="${sectionId}"]`);
     if (element) {
-      const yOffset = -120;
+      const yOffset = -120; // Account for fixed header
       const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
       window.scrollTo({ top: y, behavior: "smooth" });
+    } else {
+      // Fallback: try by ID
+      const elementById = document.getElementById(sectionId);
+      if (elementById) {
+        const yOffset = -120;
+        const y = elementById.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: y, behavior: "smooth" });
+      }
     }
   };
 

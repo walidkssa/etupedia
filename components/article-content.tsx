@@ -79,12 +79,16 @@ export function ArticleContent({ content, language = 'en' }: ArticleContentProps
             e.preventDefault();
             e.stopPropagation();
 
-            const url = `${window.location.origin}${window.location.pathname}#${sectionId}`;
+            // Build full URL for copying
+            const url = `${window.location.origin}${window.location.pathname}${window.location.search}#${sectionId}`;
 
             try {
               await navigator.clipboard.writeText(url);
               setCopiedSection(sectionId);
-              window.history.pushState(null, "", `#${sectionId}`);
+
+              // Update URL hash WITHOUT scrolling or reloading
+              window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${sectionId}`);
+
               setTimeout(() => setCopiedSection(null), 2000);
 
               // Update button to show check icon
@@ -146,11 +150,8 @@ export function ArticleContent({ content, language = 'en' }: ArticleContentProps
           link.setAttribute("href", etupediaUrl);
           link.classList.add("hover:bg-accent/50", "transition-colors", "rounded", "px-0.5", "-mx-0.5");
 
-          // Prevent default and navigate
-          link.addEventListener("click", (e) => {
-            e.preventDefault();
-            window.location.href = etupediaUrl;
-          });
+          // Use client-side navigation (no reload) - let Next.js handle it
+          // No need to prevent default - the href will work with Next.js Link behavior
 
           // Add hover preview handlers
           link.addEventListener("mouseenter", async (e) => {
