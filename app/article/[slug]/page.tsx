@@ -6,11 +6,11 @@ import { useTheme } from "@/components/theme-provider";
 import { ArticleWithTOC } from "@/lib/types";
 import { useLanguage } from "@/hooks/use-language";
 import { ArticleHeader } from "@/components/article-header";
-import { ArticleHero } from "@/components/article-hero";
-import { BottomNav } from "@/components/bottom-nav";
-import { LanguageModal } from "@/components/language-modal";
-import { TextSizeModal } from "@/components/text-size-modal";
-import { ShareModal } from "@/components/share-modal";
+import { ArticleHeroV2 } from "@/components/article-hero-v2";
+import { BottomNavV2 } from "@/components/bottom-nav-v2";
+import { LanguageModalV2 } from "@/components/language-modal-v2";
+import { TextSizeModalV2 } from "@/components/text-size-modal-v2";
+import { ShareModalV2 } from "@/components/share-modal-v2";
 import { ArticleContent } from "@/components/article-content";
 import { TableOfContents } from "@/components/table-of-contents";
 
@@ -139,8 +139,8 @@ export default function ArticlePage() {
     );
   }
 
-  // Extract first image from content for hero
-  const firstImage = article.content.match(/<img[^>]+src="([^">]+)"/)?.[1];
+  // Use infobox image (main Wikipedia image) for hero and modals
+  const coverImage = article.infoboxImage || article.content.match(/<img[^>]+src="([^">]+)"/)?.[1];
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
@@ -151,9 +151,9 @@ export default function ArticlePage() {
         isDark={theme === "dark"}
       />
 
-      {/* Hero Image */}
+      {/* Hero Image - moins haute */}
       <div className="pt-14">
-        <ArticleHero title={article.title} image={firstImage} />
+        <ArticleHeroV2 title={article.title} image={coverImage} />
       </div>
 
       {/* Main Container with Sidebar for Desktop */}
@@ -171,14 +171,11 @@ export default function ArticlePage() {
 
         {/* Article Content */}
         <main className="flex-1 min-w-0 px-4 md:px-6 lg:px-0">
-          {/* Title */}
-          <div className="py-6 md:py-8 border-b border-border">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+          {/* Title - Gris, directement sous l'image */}
+          <div className="py-6 md:py-8">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2 text-muted-foreground">
               {article.title}
             </h1>
-            <p className="text-sm text-muted-foreground">
-              From Wikipedia, the free encyclopedia
-            </p>
           </div>
 
           {/* Article Body */}
@@ -197,8 +194,8 @@ export default function ArticlePage() {
         <aside className="hidden xl:block xl:w-64 flex-shrink-0"></aside>
       </div>
 
-      {/* Bottom Navigation - Mobile Only */}
-      <BottomNav
+      {/* Bottom Navigation V2 - Mobile Only */}
+      <BottomNavV2
         onLanguageClick={() => setLanguageModalOpen(true)}
         onTextSizeClick={() => setTextSizeModalOpen(true)}
         onShareClick={() => setShareModalOpen(true)}
@@ -207,29 +204,32 @@ export default function ArticlePage() {
         }}
       />
 
-      {/* Modals */}
-      <LanguageModal
+      {/* Modals V2 avec image blur */}
+      <LanguageModalV2
         isOpen={languageModalOpen}
         onClose={() => setLanguageModalOpen(false)}
         currentLanguage={currentLanguage}
         onLanguageChange={handleLanguageChange}
+        coverImage={coverImage}
       />
 
-      <TextSizeModal
+      <TextSizeModalV2
         isOpen={textSizeModalOpen}
         onClose={() => setTextSizeModalOpen(false)}
         currentSize={textSize}
         onSizeChange={setTextSize}
+        coverImage={coverImage}
       />
 
-      <ShareModal
+      <ShareModalV2
         isOpen={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
         articleTitle={article.title}
         articleExcerpt={article.content.replace(/<[^>]*>/g, '').substring(0, 200)}
-        articleImage={firstImage}
+        articleImage={coverImage}
         articleUrl={typeof window !== 'undefined' ? window.location.href : ''}
         selectedText={selectedText}
+        coverImage={coverImage}
       />
     </div>
   );

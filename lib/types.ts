@@ -19,6 +19,7 @@ export interface ScrapedArticle {
   url: string;
   source: string;
   sections?: Section[];
+  infoboxImage?: string; // Main image from Wikipedia infobox
   references?: Reference[]; // Deprecated: kept for backwards compatibility
   referenceSections?: ReferenceSection[];
 }

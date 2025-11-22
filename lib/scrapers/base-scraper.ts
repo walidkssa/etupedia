@@ -27,6 +27,7 @@ export interface ScrapedArticle {
   url: string;
   lastUpdated?: string;
   images?: string[];
+  infoboxImage?: string; // Main image from Wikipedia infobox
   authors?: string[];
   publicationDate?: string;
   doi?: string;

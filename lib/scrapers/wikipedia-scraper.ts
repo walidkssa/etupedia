@@ -205,6 +205,21 @@ export class WikipediaScraper extends BaseScraper {
       const contentSelector = "#mw-content-text .mw-parser-output";
       const content = this.cleanContent($, contentSelector);
 
+      // Extract infobox image FIRST (this is the main article image)
+      let infoboxImage: string | null = null;
+      const infobox = $('.infobox, .infobox-image, table.infobox');
+      if (infobox.length > 0) {
+        // Try to find the main image in the infobox
+        const infoboxImg = infobox.find('img').first();
+        if (infoboxImg.length > 0) {
+          let src = infoboxImg.attr('src');
+          if (src) {
+            const fullUrl = src.startsWith('//') ? 'https:' + src : src;
+            infoboxImage = `/api/proxy-image?url=${encodeURIComponent(fullUrl)}`;
+          }
+        }
+      }
+
       // Proxy all Wikipedia images through our API to fix CORS issues
       content.find('img').each((_, img) => {
         const $img = $(img);
@@ -307,6 +322,7 @@ export class WikipediaScraper extends BaseScraper {
         url,
         lastUpdated,
         images: images.slice(0, 10), // Limit to 10 images
+        infoboxImage: infoboxImage || undefined, // Add infobox image
         keywords: keywords.slice(0, 10), // Limit to 10 keywords
         references: references.length > 0 ? references : undefined,
         referenceSections: referenceSections.length > 0 ? referenceSections : undefined,
