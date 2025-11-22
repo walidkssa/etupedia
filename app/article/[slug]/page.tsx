@@ -99,11 +99,8 @@ export default function ArticlePage() {
     // Close mobile sidebar
     setSidebarOpen(false);
 
-    // Update URL hash while preserving language parameter - use replaceState to avoid adding to history
-    const currentLang = searchParams.get('lang');
-    const langParam = currentLang ? `?lang=${currentLang}` : '';
-    const newUrl = `/article/${slug}${langParam}#${sectionId}`;
-    window.history.replaceState(null, "", newUrl);
+    // Update ONLY the hash without touching pathname - this prevents Next.js from reloading
+    window.history.replaceState(null, "", `#${sectionId}`);
 
     // Scroll to element with smooth behavior
     const element = document.querySelector(`[data-section-id="${sectionId}"]`);

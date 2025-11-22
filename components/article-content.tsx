@@ -86,8 +86,8 @@ export function ArticleContent({ content, language = 'en' }: ArticleContentProps
               await navigator.clipboard.writeText(url);
               setCopiedSection(sectionId);
 
-              // Update URL hash WITHOUT scrolling or reloading
-              window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${sectionId}`);
+              // Update ONLY the hash - prevents Next.js from reloading the page
+              window.history.replaceState(null, "", `#${sectionId}`);
 
               setTimeout(() => setCopiedSection(null), 2000);
 
