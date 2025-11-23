@@ -100,19 +100,50 @@ export function TextSelectionToolbar({
         if (text && text.length > 0 && selection && selection.rangeCount > 0) {
           const range = selection.getRangeAt(0);
 
-          // Check if selection is within article body - more robust check
+          // Check if selection is within article body - ULTRA ROBUST check
           const articleBody = document.querySelector('.article-body');
           if (articleBody) {
-            // Get all nodes in the selection
+            // Helper function to check if a node is within article body
+            const isNodeInArticle = (node: Node): boolean => {
+              if (!node) return false;
+
+              // If it's a text node, check its parent
+              if (node.nodeType === Node.TEXT_NODE) {
+                return node.parentNode ? isNodeInArticle(node.parentNode) : false;
+              }
+
+              // If it's an element, check if it's contained or IS the article body
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                return node === articleBody || articleBody.contains(node);
+              }
+
+              return false;
+            };
+
+            // Get selection containers
             const startContainer = range.startContainer;
             const endContainer = range.endContainer;
+            const commonAncestor = range.commonAncestorContainer;
 
-            // Check if start or end container is within article body
-            // This handles cases where commonAncestorContainer might be outside due to DOM restructuring
-            const isStartInArticle = articleBody.contains(startContainer.nodeType === Node.TEXT_NODE ? startContainer.parentNode : startContainer);
-            const isEndInArticle = articleBody.contains(endContainer.nodeType === Node.TEXT_NODE ? endContainer.parentNode : endContainer);
+            // Triple check: start, end, and common ancestor
+            const isStartInArticle = isNodeInArticle(startContainer);
+            const isEndInArticle = isNodeInArticle(endContainer);
+            const isCommonInArticle = isNodeInArticle(commonAncestor);
 
-            if (isStartInArticle && isEndInArticle) {
+            // Log for debugging
+            console.log('Selection check:', {
+              hasText: !!text,
+              startIn: isStartInArticle,
+              endIn: isEndInArticle,
+              commonIn: isCommonInArticle,
+              startNodeType: startContainer.nodeType,
+              endNodeType: endContainer.nodeType,
+              startParent: startContainer.parentNode?.nodeName,
+              endParent: endContainer.parentNode?.nodeName
+            });
+
+            // Accept selection if ALL checks pass
+            if (isStartInArticle && isEndInArticle && isCommonInArticle) {
               // Save the selection
               savedRange.current = range.cloneRange();
               savedSelection.current = {
@@ -122,6 +153,8 @@ export function TextSelectionToolbar({
 
               updateToolbarPosition();
               setIsVisible(true);
+            } else {
+              console.log('Selection rejected - not fully in article body');
             }
           }
         } else {

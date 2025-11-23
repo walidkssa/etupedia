@@ -106,8 +106,8 @@ export function ArticleSidebarImages({ images }: ArticleSidebarImagesProps) {
 
   return (
     <>
-      <div className="hidden xl:block fixed left-8 top-32 w-80 2xl:w-96 z-30">
-        <div className="sticky top-32">
+      <div className="hidden xl:block fixed left-8 top-1/2 -translate-y-1/2 w-80 2xl:w-96 z-30">
+        <div>
           {/* Image container with smooth transitions */}
           <div
             className="relative w-full aspect-[4/3] bg-muted/30 rounded-xl overflow-hidden border border-border shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
