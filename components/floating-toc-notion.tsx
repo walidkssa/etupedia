@@ -125,7 +125,7 @@ export function FloatingTocNotion({ sections, activeSection }: FloatingTocNotion
         side="left"
         align="start"
         sideOffset={12}
-        className="w-72 max-h-[calc(100vh-120px)] overflow-y-auto p-3 bg-card/95 backdrop-blur-sm border border-border shadow-2xl"
+        className="w-56 max-h-[calc(100vh-120px)] overflow-y-auto p-2.5 bg-card/95 backdrop-blur-sm border border-border shadow-2xl"
         onMouseEnter={() => setIsOpen(true)}
         onMouseLeave={() => setIsOpen(false)}
       >

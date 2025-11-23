@@ -187,8 +187,8 @@ export default function ArticlePage() {
         />
       )}
 
-      {/* Main Container - Full Width */}
-      <div className="max-w-4xl mx-auto px-4 md:px-6 lg:px-8">
+      {/* Main Container - Centered */}
+      <div className="max-w-3xl mx-auto px-4 md:px-6 lg:px-8">
         {/* Article Content */}
         <main className="w-full">
           {/* Title - Gris, directement sous l'image */}
@@ -199,7 +199,7 @@ export default function ArticlePage() {
           </div>
 
           {/* Article Body */}
-          <div className="article-body py-8 max-w-3xl">
+          <div className="article-body py-8">
             <style jsx>{`
               .article-body :global(p),
               .article-body :global(li),
