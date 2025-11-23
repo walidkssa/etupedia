@@ -94,17 +94,17 @@ export default function Home() {
         <div className="w-full max-w-2xl mx-auto space-y-8 -mt-24">
           {/* Logo and title */}
           <div className="text-center">
-            <h1 className="font-space text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight inline-flex items-baseline justify-center gap-3 sm:gap-4 flex-wrap">
-              <span>Etupedia</span>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight inline-flex items-baseline justify-center gap-3 sm:gap-4 flex-wrap" style={{ fontFamily: "var(--font-bristol, Bristol, Georgia, serif)" }}>
+              <span>etupedia</span>
               <span className="text-xs sm:text-sm font-mono px-2.5 sm:px-3 py-1 sm:py-1.5 bg-secondary text-secondary-foreground rounded-full -translate-y-1 sm:-translate-y-2">
-                v1.0
+                v2.0
               </span>
             </h1>
           </div>
 
           {/* Search bar */}
           <div className="w-full">
-            <SearchCommand placeholder="" />
+            <SearchCommand placeholder="search an article (im not chatgpt)" />
           </div>
         </div>
       </main>
