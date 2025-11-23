@@ -6,15 +6,14 @@ import { useTheme } from "@/components/theme-provider";
 import { ArticleWithTOC, Section } from "@/lib/types";
 import { useLanguage } from "@/hooks/use-language";
 import { ArticleHeader } from "@/components/article-header";
-import { ArticleHeroV2 } from "@/components/article-hero-v2";
 import { BottomNavV2 } from "@/components/bottom-nav-v2";
 import { LanguageModalV2 } from "@/components/language-modal-v2";
 import { TextSizeModalV2 } from "@/components/text-size-modal-v2";
 import { ShareModalV2 } from "@/components/share-modal-v2";
 import { SaveModalV2 } from "@/components/save-modal-v2";
 import { ArticleContent } from "@/components/article-content";
-import { FloatingTocNotion } from "@/components/floating-toc-notion";
-import { FloatingThemeToggle } from "@/components/floating-theme-toggle";
+import { FloatingActionButtons } from "@/components/floating-action-buttons";
+import { SearchModal } from "@/components/search-modal";
 import { TextSelectionToolbar } from "@/components/text-selection-toolbar";
 
 interface TocSection {
@@ -38,6 +37,7 @@ export default function ArticlePage() {
   const [textSizeModalOpen, setTextSizeModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Text size state
@@ -95,6 +95,10 @@ export default function ArticlePage() {
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  const handlePdfDownload = () => {
+    setSaveModalOpen(true);
   };
 
   const handleLanguageChange = (lang: string) => {
@@ -175,13 +179,11 @@ export default function ArticlePage() {
       {/* Header */}
       <ArticleHeader />
 
-      {/* Hero Image - moins haute */}
-      <div className="pt-14">
-        <ArticleHeroV2 title={article.title} image={coverImage} />
-      </div>
-
-      {/* Floating Theme Toggle */}
-      <FloatingThemeToggle isDark={theme === "dark"} onToggle={toggleTheme} />
+      {/* Search Modal */}
+      <SearchModal
+        isOpen={searchModalOpen}
+        onClose={() => setSearchModalOpen(false)}
+      />
 
       {/* Text Selection Toolbar */}
       <TextSelectionToolbar
@@ -190,21 +192,25 @@ export default function ArticlePage() {
         }}
       />
 
-      {/* Floating Table of Contents - Notion Style */}
+      {/* Floating Action Buttons (TOC + Search + PDF + Theme) */}
       {article.sections && article.sections.length > 0 && (
-        <FloatingTocNotion
+        <FloatingActionButtons
           sections={convertToTocSections(article.sections)}
           activeSection={activeSection}
+          isDark={theme === "dark"}
+          onThemeToggle={toggleTheme}
+          onSearchClick={() => setSearchModalOpen(true)}
+          onPdfDownload={handlePdfDownload}
         />
       )}
 
       {/* Main Container - Centered */}
-      <div className="max-w-3xl mx-auto px-4 md:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto px-4 md:px-6 lg:px-8 pt-24">
         {/* Article Content */}
         <main className="w-full">
-          {/* Title - Gris, directement sous l'image */}
+          {/* Title - directement sous le header */}
           <div className="py-6 md:py-8">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2 text-muted-foreground">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">
               {article.title}
             </h1>
           </div>

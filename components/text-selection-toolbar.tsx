@@ -57,28 +57,31 @@ export function TextSelectionToolbar({
     const rect = range.getBoundingClientRect();
 
     // Calculate toolbar dimensions (approximate)
-    const toolbarWidth = 280; // Approximate width on mobile
-    const toolbarHeight = 60; // Approximate height
-    const padding = 10;
+    const toolbarWidth = 240; // More accurate width
+    const toolbarHeight = 50; // More accurate height
+    const padding = 16; // More padding for safety
 
     // Calculate initial position
     let x = rect.left + rect.width / 2 + window.scrollX;
-    let y = rect.top + window.scrollY - toolbarHeight - 15;
+    let y = rect.top + window.scrollY - toolbarHeight - 20;
 
     // Prevent toolbar from going off screen horizontally
     const maxX = window.innerWidth + window.scrollX - padding;
     const minX = window.scrollX + padding;
 
-    if (x + toolbarWidth / 2 > maxX) {
-      x = maxX - toolbarWidth / 2;
+    // Constrain horizontally with better centering
+    const halfToolbarWidth = toolbarWidth / 2;
+    if (x + halfToolbarWidth > maxX) {
+      x = maxX - halfToolbarWidth;
     }
-    if (x - toolbarWidth / 2 < minX) {
-      x = minX + toolbarWidth / 2;
+    if (x - halfToolbarWidth < minX) {
+      x = minX + halfToolbarWidth;
     }
 
-    // If toolbar would be above viewport, show it below the selection instead
-    if (y < window.scrollY + padding) {
-      y = rect.bottom + window.scrollY + 15;
+    // If toolbar would be above viewport or too close to top, show it below
+    const headerHeight = 80; // Account for fixed header
+    if (y < window.scrollY + headerHeight) {
+      y = rect.bottom + window.scrollY + 20;
     }
 
     setPosition({ x, y });
