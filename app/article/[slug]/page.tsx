@@ -14,6 +14,7 @@ import { ShareModalV2 } from "@/components/share-modal-v2";
 import { SaveModalV2 } from "@/components/save-modal-v2";
 import { ArticleContent } from "@/components/article-content";
 import { FloatingTocNotion } from "@/components/floating-toc-notion";
+import { FloatingThemeToggle } from "@/components/floating-theme-toggle";
 
 interface TocSection {
   id: string;
@@ -178,6 +179,9 @@ export default function ArticlePage() {
       <div className="pt-14">
         <ArticleHeroV2 title={article.title} image={coverImage} />
       </div>
+
+      {/* Floating Theme Toggle */}
+      <FloatingThemeToggle isDark={theme === "dark"} onToggle={toggleTheme} />
 
       {/* Floating Table of Contents - Notion Style */}
       {article.sections && article.sections.length > 0 && (
