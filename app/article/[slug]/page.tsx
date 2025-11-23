@@ -13,7 +13,7 @@ import { TextSizeModalV2 } from "@/components/text-size-modal-v2";
 import { ShareModalV2 } from "@/components/share-modal-v2";
 import { SaveModalV2 } from "@/components/save-modal-v2";
 import { ArticleContent } from "@/components/article-content";
-import { TocSidebarPro } from "@/components/toc-sidebar-pro";
+import { FloatingTocNotion } from "@/components/floating-toc-notion";
 
 interface TocSection {
   id: string;
@@ -179,19 +179,18 @@ export default function ArticlePage() {
         <ArticleHeroV2 title={article.title} image={coverImage} />
       </div>
 
-      {/* Main Container with Sticky TOC Sidebar */}
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
-        <div className="lg:flex lg:gap-8 lg:items-start">
-          {/* Sticky TOC Sidebar - Desktop Only */}
-          {article.sections && article.sections.length > 0 && (
-            <TocSidebarPro
-              sections={convertToTocSections(article.sections)}
-              activeSection={activeSection}
-            />
-          )}
+      {/* Floating Table of Contents - Notion Style */}
+      {article.sections && article.sections.length > 0 && (
+        <FloatingTocNotion
+          sections={convertToTocSections(article.sections)}
+          activeSection={activeSection}
+        />
+      )}
 
-          {/* Article Content */}
-          <main className="flex-1 min-w-0 lg:max-w-3xl">
+      {/* Main Container - Full Width */}
+      <div className="max-w-4xl mx-auto px-4 md:px-6 lg:px-8">
+        {/* Article Content */}
+        <main className="w-full">
           {/* Title - Gris, directement sous l'image */}
           <div className="py-6 md:py-8">
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2 text-muted-foreground">
@@ -216,7 +215,6 @@ export default function ArticlePage() {
             />
           </div>
         </main>
-        </div>
       </div>
 
       {/* Bottom Navigation V2 - Mobile Only */}
