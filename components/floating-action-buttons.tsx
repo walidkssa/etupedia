@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sun, Moon, Search, Download, BookOpen } from "lucide-react";
 import { ChevronRight } from "lucide-react";
 import {
@@ -35,6 +35,7 @@ interface FloatingActionButtonsProps {
 
   // PDF props
   onPdfDownload: () => void;
+  onPdfDownloadDirect?: () => void; // Direct download for desktop
 }
 
 export function FloatingActionButtons({
@@ -44,11 +45,31 @@ export function FloatingActionButtons({
   onThemeToggle,
   onSearchClick,
   onPdfDownload,
+  onPdfDownloadDirect,
 }: FloatingActionButtonsProps) {
   const [openSections, setOpenSections] = useState<Set<string>>(
     new Set(sections.map((s) => s.id))
   );
   const [isTocOpen, setIsTocOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  // Detect if desktop
+  useEffect(() => {
+    const checkDesktop = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
+  }, []);
+
+  const handlePdfClick = () => {
+    if (isDesktop && onPdfDownloadDirect) {
+      onPdfDownloadDirect(); // Direct download on desktop
+    } else {
+      onPdfDownload(); // Open modal on mobile
+    }
+  };
 
   const toggleSection = (id: string) => {
     setOpenSections((prev) => {
@@ -173,7 +194,7 @@ export function FloatingActionButtons({
 
       {/* PDF Download Button */}
       <button
-        onClick={onPdfDownload}
+        onClick={handlePdfClick}
         className="p-2.5 bg-card border border-border rounded-lg shadow-lg hover:bg-accent transition-colors"
         aria-label="Download PDF"
       >

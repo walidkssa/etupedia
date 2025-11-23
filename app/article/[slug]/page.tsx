@@ -101,6 +101,19 @@ export default function ArticlePage() {
     setSaveModalOpen(true);
   };
 
+  const handlePdfDownloadDirect = async () => {
+    if (!article) return;
+
+    try {
+      const { generatePDF } = await import("@/lib/pdf-generator");
+      await generatePDF(article.title, article.content, textModifications);
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      // Fallback to modal on error
+      setSaveModalOpen(true);
+    }
+  };
+
   const handleLanguageChange = (lang: string) => {
     // Update URL with new language parameter
     const newUrl = `/article/${slug}?lang=${lang}`;
@@ -201,6 +214,7 @@ export default function ArticlePage() {
           onThemeToggle={toggleTheme}
           onSearchClick={() => setSearchModalOpen(true)}
           onPdfDownload={handlePdfDownload}
+          onPdfDownloadDirect={handlePdfDownloadDirect}
         />
       )}
 
