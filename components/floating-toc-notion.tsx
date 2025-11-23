@@ -115,7 +115,7 @@ export function FloatingTocNotion({ sections, activeSection }: FloatingTocNotion
     <HoverCard open={isOpen} onOpenChange={setIsOpen} openDelay={200} closeDelay={200}>
       <HoverCardTrigger asChild>
         <button
-          className="fixed top-24 left-1/2 -translate-x-1/2 z-40 p-2.5 bg-card border border-border rounded-lg shadow-lg hover:bg-accent transition-colors"
+          className="fixed top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-40 p-2.5 bg-card border border-border rounded-lg shadow-lg hover:bg-accent transition-colors"
           onMouseEnter={() => setIsOpen(true)}
         >
           <BookOpen className="w-5 h-5 text-muted-foreground" />
