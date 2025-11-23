@@ -100,18 +100,29 @@ export function TextSelectionToolbar({
         if (text && text.length > 0 && selection && selection.rangeCount > 0) {
           const range = selection.getRangeAt(0);
 
-          // Check if selection is within article body
+          // Check if selection is within article body - more robust check
           const articleBody = document.querySelector('.article-body');
-          if (articleBody && articleBody.contains(range.commonAncestorContainer)) {
-            // Save the selection
-            savedRange.current = range.cloneRange();
-            savedSelection.current = {
-              text,
-              range: range.cloneRange(),
-            };
+          if (articleBody) {
+            // Get all nodes in the selection
+            const startContainer = range.startContainer;
+            const endContainer = range.endContainer;
 
-            updateToolbarPosition();
-            setIsVisible(true);
+            // Check if start or end container is within article body
+            // This handles cases where commonAncestorContainer might be outside due to DOM restructuring
+            const isStartInArticle = articleBody.contains(startContainer.nodeType === Node.TEXT_NODE ? startContainer.parentNode : startContainer);
+            const isEndInArticle = articleBody.contains(endContainer.nodeType === Node.TEXT_NODE ? endContainer.parentNode : endContainer);
+
+            if (isStartInArticle && isEndInArticle) {
+              // Save the selection
+              savedRange.current = range.cloneRange();
+              savedSelection.current = {
+                text,
+                range: range.cloneRange(),
+              };
+
+              updateToolbarPosition();
+              setIsVisible(true);
+            }
           }
         } else {
           // Only hide if we're not showing color pickers
