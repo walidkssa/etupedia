@@ -68,43 +68,57 @@ export function TextSelectionToolbar({
       // Don't handle selection while applying modification
       if (isApplyingModification.current) return;
 
-      const selection = window.getSelection();
-      const text = selection?.toString().trim();
+      // Small delay to ensure selection is complete on mobile
+      setTimeout(() => {
+        const selection = window.getSelection();
+        const text = selection?.toString().trim();
 
-      if (text && text.length > 0 && selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
+        if (text && text.length > 0 && selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
 
-        // Check if selection is within article body
-        const articleBody = document.querySelector('.article-body');
-        if (articleBody && articleBody.contains(range.commonAncestorContainer)) {
-          // Save the selection
-          savedRange.current = range.cloneRange();
-          savedSelection.current = {
-            text,
-            range: range.cloneRange(),
-          };
+          // Check if selection is within article body
+          const articleBody = document.querySelector('.article-body');
+          if (articleBody && articleBody.contains(range.commonAncestorContainer)) {
+            // Save the selection
+            savedRange.current = range.cloneRange();
+            savedSelection.current = {
+              text,
+              range: range.cloneRange(),
+            };
 
-          updateToolbarPosition();
-          setIsVisible(true);
+            updateToolbarPosition();
+            setIsVisible(true);
+          }
+        } else {
+          // Only hide if we're not showing color pickers
+          if (!showHighlightColors && !showTextColors) {
+            setTimeout(() => {
+              if (!toolbarRef.current?.matches(':hover') && !showHighlightColors && !showTextColors) {
+                setIsVisible(false);
+              }
+            }, 100);
+          }
         }
-      } else {
-        // Only hide if we're not showing color pickers
-        if (!showHighlightColors && !showTextColors) {
-          setTimeout(() => {
-            if (!toolbarRef.current?.matches(':hover') && !showHighlightColors && !showTextColors) {
-              setIsVisible(false);
-            }
-          }, 100);
-        }
-      }
+      }, 50);
     };
 
+    // Handle both mouse and touch events
     document.addEventListener("mouseup", handleSelection);
     document.addEventListener("touchend", handleSelection);
+
+    // Additional event for mobile selection
+    document.addEventListener("selectionchange", () => {
+      if (!isApplyingModification.current) {
+        // Debounce selectionchange on mobile
+        clearTimeout((window as any)._selectionTimeout);
+        (window as any)._selectionTimeout = setTimeout(handleSelection, 100);
+      }
+    });
 
     return () => {
       document.removeEventListener("mouseup", handleSelection);
       document.removeEventListener("touchend", handleSelection);
+      clearTimeout((window as any)._selectionTimeout);
     };
   }, [updateToolbarPosition, showHighlightColors, showTextColors]);
 
@@ -194,15 +208,19 @@ export function TextSelectionToolbar({
   return (
     <div
       ref={toolbarRef}
-      className="fixed z-[100] bg-card border border-border rounded-lg shadow-2xl p-1.5 flex items-center gap-1"
+      className="fixed z-[100] bg-card border border-border rounded-lg shadow-2xl p-2 md:p-1.5 flex items-center gap-1.5 md:gap-1"
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        transform: "translate(-50%, -100%)",
+        transform: "translate(-50%, calc(-100% - 10px))",
       }}
       onMouseDown={(e) => {
         // Prevent default to keep selection
         e.preventDefault();
+        e.stopPropagation();
+      }}
+      onTouchStart={(e) => {
+        // Prevent default on mobile
         e.stopPropagation();
       }}
     >
@@ -212,15 +230,20 @@ export function TextSelectionToolbar({
           e.preventDefault();
           e.stopPropagation();
         }}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          applyModification("bold");
+        }}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           applyModification("bold");
         }}
-        className="p-2 hover:bg-accent rounded transition-colors"
+        className="p-2.5 md:p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation"
         title="Bold"
       >
-        <Bold className="w-4 h-4" />
+        <Bold className="w-5 h-5 md:w-4 md:h-4" />
       </button>
 
       {/* Italic */}
@@ -229,15 +252,20 @@ export function TextSelectionToolbar({
           e.preventDefault();
           e.stopPropagation();
         }}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          applyModification("italic");
+        }}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           applyModification("italic");
         }}
-        className="p-2 hover:bg-accent rounded transition-colors"
+        className="p-2.5 md:p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation"
         title="Italic"
       >
-        <Italic className="w-4 h-4" />
+        <Italic className="w-5 h-5 md:w-4 md:h-4" />
       </button>
 
       {/* Separator */}
@@ -250,16 +278,22 @@ export function TextSelectionToolbar({
             e.preventDefault();
             e.stopPropagation();
           }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowHighlightColors(!showHighlightColors);
+            setShowTextColors(false);
+          }}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             setShowHighlightColors(!showHighlightColors);
             setShowTextColors(false);
           }}
-          className={`p-2 hover:bg-accent rounded transition-colors ${showHighlightColors ? 'bg-accent' : ''}`}
+          className={`p-2.5 md:p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation ${showHighlightColors ? 'bg-accent' : ''}`}
           title="Highlight"
         >
-          <Highlighter className="w-4 h-4" />
+          <Highlighter className="w-5 h-5 md:w-4 md:h-4" />
         </button>
 
         {showHighlightColors && (
@@ -281,13 +315,19 @@ export function TextSelectionToolbar({
                   e.preventDefault();
                   e.stopPropagation();
                 }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("Highlight color clicked (touch):", color);
+                  applyModification("highlight", color);
+                }}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   console.log("Highlight color clicked:", color);
                   applyModification("highlight", color);
                 }}
-                className="w-7 h-7 rounded border-2 border-border hover:border-foreground hover:scale-110 transition-all cursor-pointer"
+                className="w-8 h-8 md:w-7 md:h-7 rounded border-2 border-border hover:border-foreground active:scale-95 hover:scale-110 transition-all cursor-pointer touch-manipulation"
                 style={{ backgroundColor: color }}
                 title={`Highlight with ${color}`}
               />
@@ -302,15 +342,20 @@ export function TextSelectionToolbar({
           e.preventDefault();
           e.stopPropagation();
         }}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          applyModification("underline");
+        }}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           applyModification("underline");
         }}
-        className="p-2 hover:bg-accent rounded transition-colors"
+        className="p-2.5 md:p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation"
         title="Underline"
       >
-        <Underline className="w-4 h-4" />
+        <Underline className="w-5 h-5 md:w-4 md:h-4" />
       </button>
 
       {/* Text Color */}
@@ -320,16 +365,22 @@ export function TextSelectionToolbar({
             e.preventDefault();
             e.stopPropagation();
           }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowTextColors(!showTextColors);
+            setShowHighlightColors(false);
+          }}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             setShowTextColors(!showTextColors);
             setShowHighlightColors(false);
           }}
-          className={`p-2 hover:bg-accent rounded transition-colors ${showTextColors ? 'bg-accent' : ''}`}
+          className={`p-2.5 md:p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation ${showTextColors ? 'bg-accent' : ''}`}
           title="Text Color"
         >
-          <Type className="w-4 h-4" />
+          <Type className="w-5 h-5 md:w-4 md:h-4" />
         </button>
 
         {showTextColors && (
@@ -351,13 +402,19 @@ export function TextSelectionToolbar({
                   e.preventDefault();
                   e.stopPropagation();
                 }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("Text color clicked (touch):", color);
+                  applyModification("color", color);
+                }}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   console.log("Text color clicked:", color);
                   applyModification("color", color);
                 }}
-                className="w-7 h-7 rounded border-2 border-border hover:border-foreground hover:scale-110 transition-all cursor-pointer"
+                className="w-8 h-8 md:w-7 md:h-7 rounded border-2 border-border hover:border-foreground active:scale-95 hover:scale-110 transition-all cursor-pointer touch-manipulation"
                 style={{ backgroundColor: color }}
                 title={`Color text with ${color}`}
               />
