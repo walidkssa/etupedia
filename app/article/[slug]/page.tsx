@@ -13,7 +13,7 @@ import { TextSizeModalV2 } from "@/components/text-size-modal-v2";
 import { ShareModalV2 } from "@/components/share-modal-v2";
 import { SaveModalV2 } from "@/components/save-modal-v2";
 import { ArticleContent } from "@/components/article-content";
-import { ArticleTocNotion } from "@/components/article-toc-notion";
+import { FloatingTocNotion } from "@/components/floating-toc-notion";
 
 interface TocSection {
   id: string;
@@ -179,20 +179,18 @@ export default function ArticlePage() {
         <ArticleHeroV2 title={article.title} image={coverImage} />
       </div>
 
-      {/* Main Container with Sidebar for Desktop */}
-      <div className="max-w-7xl mx-auto lg:flex lg:gap-8 lg:px-8">
-        {/* Table of Contents - Desktop Only */}
-        <aside className="hidden lg:block lg:w-64 xl:w-72 flex-shrink-0 sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto py-8">
-          {article.sections && article.sections.length > 0 && (
-            <ArticleTocNotion
-              sections={convertToTocSections(article.sections)}
-              activeSection={activeSection}
-            />
-          )}
-        </aside>
+      {/* Floating Table of Contents - Notion Style */}
+      {article.sections && article.sections.length > 0 && (
+        <FloatingTocNotion
+          sections={convertToTocSections(article.sections)}
+          activeSection={activeSection}
+        />
+      )}
 
+      {/* Main Container - Full Width */}
+      <div className="max-w-4xl mx-auto px-4 md:px-6 lg:px-8">
         {/* Article Content */}
-        <main className="flex-1 min-w-0 px-4 md:px-6 lg:px-0">
+        <main className="w-full">
           {/* Title - Gris, directement sous l'image */}
           <div className="py-6 md:py-8">
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2 text-muted-foreground">
@@ -217,9 +215,6 @@ export default function ArticlePage() {
             />
           </div>
         </main>
-
-        {/* Right Sidebar - Optional for future features */}
-        <aside className="hidden xl:block xl:w-64 flex-shrink-0"></aside>
       </div>
 
       {/* Bottom Navigation V2 - Mobile Only */}
