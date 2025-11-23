@@ -45,129 +45,181 @@ export function TextSelectionToolbar({
   const [showHighlightColors, setShowHighlightColors] = useState(false);
   const [showTextColors, setShowTextColors] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
-  const savedRange = useRef<Range | null>(null);
   const savedSelection = useRef<{ text: string; range: Range } | null>(null);
   const isApplyingModification = useRef(false);
+  const selectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const updateToolbarPosition = useCallback(() => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
+  // Function to check if a node is within article body
+  const isNodeInArticleBody = useCallback((node: Node | null): boolean => {
+    if (!node) return false;
 
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
+    const articleBody = document.querySelector('.article-body');
+    if (!articleBody) return false;
 
-    // Calculate toolbar dimensions (approximate)
-    const toolbarWidth = 240; // More accurate width
-    const toolbarHeight = 50; // More accurate height
-    const padding = 16; // More padding for safety
-
-    // Calculate initial position
-    let x = rect.left + rect.width / 2 + window.scrollX;
-    let y = rect.top + window.scrollY - toolbarHeight - 20;
-
-    // Prevent toolbar from going off screen horizontally
-    const maxX = window.innerWidth + window.scrollX - padding;
-    const minX = window.scrollX + padding;
-
-    // Constrain horizontally with better centering
-    const halfToolbarWidth = toolbarWidth / 2;
-    if (x + halfToolbarWidth > maxX) {
-      x = maxX - halfToolbarWidth;
-    }
-    if (x - halfToolbarWidth < minX) {
-      x = minX + halfToolbarWidth;
+    // Get the element node (convert text nodes to their parent)
+    let element: Element | null = null;
+    if (node.nodeType === Node.TEXT_NODE) {
+      element = node.parentElement;
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      element = node as Element;
     }
 
-    // If toolbar would be above viewport or too close to top, show it below
-    const headerHeight = 80; // Account for fixed header
-    if (y < window.scrollY + headerHeight) {
-      y = rect.bottom + window.scrollY + 20;
-    }
+    if (!element) return false;
 
-    setPosition({ x, y });
+    // Check if element is within or is the article body
+    return element === articleBody || articleBody.contains(element);
   }, []);
 
-  useEffect(() => {
-    const handleSelection = () => {
-      // Don't handle selection while applying modification
-      if (isApplyingModification.current) return;
+  const updateToolbarPosition = useCallback(() => {
+    if (!savedSelection.current) return;
 
-      // Small delay to ensure selection is complete on mobile
-      setTimeout(() => {
-        const selection = window.getSelection();
-        const text = selection?.toString().trim();
+    try {
+      const range = savedSelection.current.range;
+      const rect = range.getBoundingClientRect();
 
-        if (text && text.length > 0 && selection && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0);
+      // Calculate toolbar dimensions
+      const toolbarWidth = 250;
+      const toolbarHeight = 50;
+      const padding = 20;
 
-          // Check if selection is within article body - SIMPLE AND EFFECTIVE
-          const articleBody = document.querySelector('.article-body');
-          if (articleBody) {
-            // Get the actual DOM node (handle text nodes by using parentElement)
-            const startNode = range.startContainer.nodeType === Node.TEXT_NODE
-              ? range.startContainer.parentElement
-              : range.startContainer;
+      // Calculate initial position (centered above selection)
+      let x = rect.left + rect.width / 2 + window.scrollX;
+      let y = rect.top + window.scrollY - toolbarHeight - 10;
 
-            const endNode = range.endContainer.nodeType === Node.TEXT_NODE
-              ? range.endContainer.parentElement
-              : range.endContainer;
+      // Prevent toolbar from going off screen horizontally
+      const halfToolbarWidth = toolbarWidth / 2;
+      const minX = window.scrollX + padding;
+      const maxX = window.innerWidth + window.scrollX - padding;
 
-            // Simple check: are both start and end nodes inside article body?
-            const isInArticle = startNode && endNode &&
-              (articleBody.contains(startNode) || articleBody === startNode) &&
-              (articleBody.contains(endNode) || articleBody === endNode);
+      if (x - halfToolbarWidth < minX) {
+        x = minX + halfToolbarWidth;
+      } else if (x + halfToolbarWidth > maxX) {
+        x = maxX - halfToolbarWidth;
+      }
 
-            if (isInArticle) {
-              // Save the selection
-              savedRange.current = range.cloneRange();
-              savedSelection.current = {
-                text,
-                range: range.cloneRange(),
-              };
+      // If toolbar would be above viewport, show it below selection
+      const headerHeight = 80;
+      if (y < window.scrollY + headerHeight) {
+        y = rect.bottom + window.scrollY + 10;
+      }
 
-              updateToolbarPosition();
-              setIsVisible(true);
+      setPosition({ x, y });
+    } catch (error) {
+      console.error("Error updating toolbar position:", error);
+    }
+  }, []);
+
+  const handleSelection = useCallback(() => {
+    // Don't handle selection while applying modification
+    if (isApplyingModification.current) return;
+
+    // Clear any existing timeout
+    if (selectionTimeoutRef.current) {
+      clearTimeout(selectionTimeoutRef.current);
+    }
+
+    selectionTimeoutRef.current = setTimeout(() => {
+      const selection = window.getSelection();
+      const text = selection?.toString().trim();
+
+      // Check if we have valid text selection
+      if (!text || text.length === 0 || !selection || selection.rangeCount === 0) {
+        // Only hide if we're not showing color pickers
+        if (!showHighlightColors && !showTextColors) {
+          // Small delay to allow clicking toolbar
+          setTimeout(() => {
+            if (!toolbarRef.current?.matches(':hover') &&
+                !showHighlightColors &&
+                !showTextColors) {
+              setIsVisible(false);
+              savedSelection.current = null;
             }
-          }
-        } else {
-          // Only hide if we're not showing color pickers
-          if (!showHighlightColors && !showTextColors) {
-            setTimeout(() => {
-              if (!toolbarRef.current?.matches(':hover') && !showHighlightColors && !showTextColors) {
-                setIsVisible(false);
-              }
-            }, 100);
-          }
+          }, 150);
         }
-      }, 50);
-    };
+        return;
+      }
 
-    // Handle both mouse and touch events
+      try {
+        const range = selection.getRangeAt(0);
+
+        // Validate that selection is within article body
+        const startNode = range.startContainer;
+        const endNode = range.endContainer;
+        const commonAncestor = range.commonAncestorContainer;
+
+        // Check all three: start, end, and common ancestor
+        const isStartValid = isNodeInArticleBody(startNode);
+        const isEndValid = isNodeInArticleBody(endNode);
+        const isCommonValid = isNodeInArticleBody(commonAncestor);
+
+        if (!isStartValid || !isEndValid || !isCommonValid) {
+          // Selection is outside article body
+          setIsVisible(false);
+          savedSelection.current = null;
+          return;
+        }
+
+        // Save the selection
+        savedSelection.current = {
+          text,
+          range: range.cloneRange(),
+        };
+
+        // Update position and show toolbar
+        updateToolbarPosition();
+        setIsVisible(true);
+      } catch (error) {
+        console.error("Error handling selection:", error);
+        setIsVisible(false);
+        savedSelection.current = null;
+      }
+    }, 50);
+  }, [isNodeInArticleBody, updateToolbarPosition, showHighlightColors, showTextColors]);
+
+  // Setup event listeners
+  useEffect(() => {
+    // Handle mouseup and touchend for desktop and mobile
     document.addEventListener("mouseup", handleSelection);
     document.addEventListener("touchend", handleSelection);
 
-    // Additional event for mobile selection
-    document.addEventListener("selectionchange", () => {
+    // Handle selectionchange for better mobile support
+    const handleSelectionChange = () => {
       if (!isApplyingModification.current) {
-        // Debounce selectionchange on mobile
-        clearTimeout((window as any)._selectionTimeout);
-        (window as any)._selectionTimeout = setTimeout(handleSelection, 100);
+        handleSelection();
       }
-    });
+    };
+
+    document.addEventListener("selectionchange", handleSelectionChange);
 
     return () => {
       document.removeEventListener("mouseup", handleSelection);
       document.removeEventListener("touchend", handleSelection);
-      clearTimeout((window as any)._selectionTimeout);
+      document.removeEventListener("selectionchange", handleSelectionChange);
+
+      if (selectionTimeoutRef.current) {
+        clearTimeout(selectionTimeoutRef.current);
+      }
     };
-  }, [updateToolbarPosition, showHighlightColors, showTextColors]);
+  }, [handleSelection]);
+
+  // Update position on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      if (isVisible && savedSelection.current) {
+        updateToolbarPosition();
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, true);
+    return () => window.removeEventListener("scroll", handleScroll, true);
+  }, [isVisible, updateToolbarPosition]);
 
   const applyModification = useCallback((
     type: "highlight" | "underline" | "color" | "bold" | "italic",
     color?: string
   ) => {
     if (!savedSelection.current) {
-      console.log("No saved selection");
+      console.warn("No saved selection available");
       return;
     }
 
@@ -187,7 +239,6 @@ export function TextSelectionToolbar({
           span.style.backgroundColor = color || HIGHLIGHT_COLORS[0];
           span.style.padding = "2px 4px";
           span.style.borderRadius = "3px";
-          console.log("Applied highlight:", color);
           break;
         case "underline":
           span.style.textDecoration = "underline";
@@ -196,7 +247,6 @@ export function TextSelectionToolbar({
           break;
         case "color":
           span.style.color = color || TEXT_COLORS[0];
-          console.log("Applied color:", color);
           break;
         case "bold":
           span.style.fontWeight = "bold";
@@ -228,13 +278,14 @@ export function TextSelectionToolbar({
       const selection = window.getSelection();
       selection?.removeAllRanges();
 
-      // Hide toolbar and reset state
+      // Reset state
+      setIsVisible(false);
+      setShowHighlightColors(false);
+      setShowTextColors(false);
+      savedSelection.current = null;
+
+      // Small delay before allowing new selections
       setTimeout(() => {
-        setIsVisible(false);
-        setShowHighlightColors(false);
-        setShowTextColors(false);
-        savedSelection.current = null;
-        savedRange.current = null;
         isApplyingModification.current = false;
       }, 100);
     } catch (error) {
@@ -248,19 +299,18 @@ export function TextSelectionToolbar({
   return (
     <div
       ref={toolbarRef}
-      className="fixed z-[100] bg-card border border-border rounded-lg shadow-2xl p-1.5 md:p-1.5 flex items-center gap-1 md:gap-1"
+      className="fixed z-[100] bg-card border border-border rounded-lg shadow-2xl p-1.5 flex items-center gap-1"
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
         transform: "translate(-50%, 0)",
+        pointerEvents: "auto",
       }}
       onMouseDown={(e) => {
-        // Prevent default to keep selection
         e.preventDefault();
         e.stopPropagation();
       }}
       onTouchStart={(e) => {
-        // Prevent default on mobile
         e.stopPropagation();
       }}
     >
@@ -270,20 +320,16 @@ export function TextSelectionToolbar({
           e.preventDefault();
           e.stopPropagation();
         }}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          applyModification("bold");
-        }}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           applyModification("bold");
         }}
-        className="p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation"
+        className="p-2 hover:bg-accent active:bg-accent rounded transition-colors"
         title="Bold"
+        type="button"
       >
-        <Bold className="w-4.5 h-4.5 md:w-4 md:h-4" />
+        <Bold className="w-4 h-4" />
       </button>
 
       {/* Italic */}
@@ -292,20 +338,16 @@ export function TextSelectionToolbar({
           e.preventDefault();
           e.stopPropagation();
         }}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          applyModification("italic");
-        }}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           applyModification("italic");
         }}
-        className="p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation"
+        className="p-2 hover:bg-accent active:bg-accent rounded transition-colors"
         title="Italic"
+        type="button"
       >
-        <Italic className="w-4.5 h-4.5 md:w-4 md:h-4" />
+        <Italic className="w-4 h-4" />
       </button>
 
       {/* Separator */}
@@ -318,32 +360,23 @@ export function TextSelectionToolbar({
             e.preventDefault();
             e.stopPropagation();
           }}
-          onTouchEnd={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setShowHighlightColors(!showHighlightColors);
-            setShowTextColors(false);
-          }}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             setShowHighlightColors(!showHighlightColors);
             setShowTextColors(false);
           }}
-          className={`p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation ${showHighlightColors ? 'bg-accent' : ''}`}
+          className={`p-2 hover:bg-accent active:bg-accent rounded transition-colors ${showHighlightColors ? 'bg-accent' : ''}`}
           title="Highlight"
+          type="button"
         >
-          <Highlighter className="w-4.5 h-4.5 md:w-4 md:h-4" />
+          <Highlighter className="w-4 h-4" />
         </button>
 
         {showHighlightColors && (
           <div
             className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-card border border-border rounded-lg shadow-lg p-1.5 flex gap-1.5 z-[110]"
             onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
             }}
@@ -355,21 +388,15 @@ export function TextSelectionToolbar({
                   e.preventDefault();
                   e.stopPropagation();
                 }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log("Highlight color clicked (touch):", color);
-                  applyModification("highlight", color);
-                }}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.log("Highlight color clicked:", color);
                   applyModification("highlight", color);
                 }}
-                className="w-7 h-7 rounded border-2 border-border hover:border-foreground active:scale-95 transition-all cursor-pointer touch-manipulation"
+                className="w-7 h-7 rounded border-2 border-border hover:border-foreground active:scale-95 transition-all cursor-pointer"
                 style={{ backgroundColor: color }}
                 title={`Highlight with ${color}`}
+                type="button"
               />
             ))}
           </div>
@@ -382,20 +409,16 @@ export function TextSelectionToolbar({
           e.preventDefault();
           e.stopPropagation();
         }}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          applyModification("underline");
-        }}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           applyModification("underline");
         }}
-        className="p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation"
+        className="p-2 hover:bg-accent active:bg-accent rounded transition-colors"
         title="Underline"
+        type="button"
       >
-        <Underline className="w-4.5 h-4.5 md:w-4 md:h-4" />
+        <Underline className="w-4 h-4" />
       </button>
 
       {/* Text Color */}
@@ -405,32 +428,23 @@ export function TextSelectionToolbar({
             e.preventDefault();
             e.stopPropagation();
           }}
-          onTouchEnd={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setShowTextColors(!showTextColors);
-            setShowHighlightColors(false);
-          }}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             setShowTextColors(!showTextColors);
             setShowHighlightColors(false);
           }}
-          className={`p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation ${showTextColors ? 'bg-accent' : ''}`}
+          className={`p-2 hover:bg-accent active:bg-accent rounded transition-colors ${showTextColors ? 'bg-accent' : ''}`}
           title="Text Color"
+          type="button"
         >
-          <Type className="w-4.5 h-4.5 md:w-4 md:h-4" />
+          <Type className="w-4 h-4" />
         </button>
 
         {showTextColors && (
           <div
             className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-card border border-border rounded-lg shadow-lg p-1.5 flex gap-1.5 z-[110]"
             onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
             }}
@@ -442,21 +456,15 @@ export function TextSelectionToolbar({
                   e.preventDefault();
                   e.stopPropagation();
                 }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log("Text color clicked (touch):", color);
-                  applyModification("color", color);
-                }}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.log("Text color clicked:", color);
                   applyModification("color", color);
                 }}
-                className="w-7 h-7 rounded border-2 border-border hover:border-foreground active:scale-95 transition-all cursor-pointer touch-manipulation"
+                className="w-7 h-7 rounded border-2 border-border hover:border-foreground active:scale-95 transition-all cursor-pointer"
                 style={{ backgroundColor: color }}
                 title={`Color text with ${color}`}
+                type="button"
               />
             ))}
           </div>
