@@ -114,19 +114,42 @@ export function extractImagesFromContent(htmlContent: string): {
   };
 }
 
-export function getImageUrl(src: string): string {
-  // If already proxied, return as is
+export function getImageUrl(src: string, highQuality: boolean = false): string {
+  // If already proxied, extract and upgrade if needed
   if (src.includes("/api/proxy-image")) {
+    if (!highQuality) return src;
+
+    // Extract original URL and upgrade to high quality
+    const urlParam = new URLSearchParams(src.split("?")[1]).get("url");
+    if (urlParam) {
+      const originalUrl = decodeURIComponent(urlParam);
+      return getImageUrl(originalUrl, true);
+    }
     return src;
   }
 
-  // If it's a Wikipedia/Wikimedia URL, proxy it
-  if (src.includes("wikipedia") || src.includes("wikimedia")) {
-    // Upgrade to high-res version
-    const highResSrc = src.replace(/\/thumb\/(.*?)\/[\d]+px-.*$/, "/$1");
-    const fullUrl = highResSrc.startsWith("//") ? "https:" + highResSrc : highResSrc;
+  // Ensure https protocol
+  let fullUrl = src.startsWith("//") ? "https:" + src : src;
+
+  // If it's a Wikipedia/Wikimedia URL
+  if (fullUrl.includes("wikipedia") || fullUrl.includes("wikimedia")) {
+    if (highQuality) {
+      // Remove ALL thumbnail/resize parameters for maximum quality
+      // Pattern 1: /thumb/path/to/file/XXXpx-filename -> /path/to/file
+      fullUrl = fullUrl.replace(/\/thumb\/([^/]+\/[^/]+\/[^/]+)\/\d+px-[^/]+$/, "/$1");
+
+      // Pattern 2: Remove any remaining /thumb/ prefix
+      fullUrl = fullUrl.replace(/\/thumb\//, "/");
+
+      // Pattern 3: Remove width parameters from URL
+      fullUrl = fullUrl.replace(/\/\d+px-/, "/");
+
+      // Pattern 4: Get the original file by removing resize suffix
+      fullUrl = fullUrl.replace(/\/([^/]+)\/\d+px-(.+)$/, "/$1/$2");
+    }
+
     return `/api/proxy-image?url=${encodeURIComponent(fullUrl)}`;
   }
 
-  return src;
+  return fullUrl;
 }

@@ -111,7 +111,7 @@ export function ArticleSidebarImages({ images }: ArticleSidebarImagesProps) {
           {/* Image container with smooth transitions */}
           <div
             className="relative w-full aspect-[4/3] bg-muted/30 rounded-xl overflow-hidden border border-border shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
-            onClick={() => setModalImage(getImageUrl(currentImage.src))}
+            onClick={() => setModalImage(getImageUrl(currentImage.src, true))}
           >
             {images.map((image, index) => (
               <div
