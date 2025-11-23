@@ -169,11 +169,7 @@ export default function ArticlePage() {
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       {/* Header */}
-      <ArticleHeader
-        onMenuClick={() => setMenuOpen(!menuOpen)}
-        onThemeToggle={toggleTheme}
-        isDark={theme === "dark"}
-      />
+      <ArticleHeader />
 
       {/* Hero Image - moins haute */}
       <div className="pt-14">
