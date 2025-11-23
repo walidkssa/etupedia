@@ -26,12 +26,12 @@ export function ArticleHeader({
           <ChevronLeft className="w-5 h-5" />
         </Link>
 
-        {/* Logo - Text "etupedia" in Libre Baskerville */}
+        {/* Logo - Text "etupedia" in Bristol */}
         <Link href="/" className="flex-1 flex justify-center">
           <span
             className="text-2xl font-bold tracking-tight text-foreground transition-colors"
             style={{
-              fontFamily: "var(--font-libre-baskerville)",
+              fontFamily: "var(--font-bristol, Bristol, Georgia, serif)",
             }}
           >
             etupedia

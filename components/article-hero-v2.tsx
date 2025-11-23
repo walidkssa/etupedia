@@ -17,7 +17,7 @@ export function ArticleHeroV2({ title, image }: ArticleHeroProps) {
         <span
           className="text-9xl font-bold text-muted-foreground/20"
           style={{
-            fontFamily: "var(--font-libre-baskerville)",
+            fontFamily: "var(--font-bristol, Bristol, Georgia, serif)",
           }}
         >
           e
