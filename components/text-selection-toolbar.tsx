@@ -56,11 +56,32 @@ export function TextSelectionToolbar({
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
 
-    // Use window.scrollX and window.scrollY for better compatibility
-    setPosition({
-      x: rect.left + rect.width / 2 + window.scrollX,
-      y: rect.top + window.scrollY - 10,
-    });
+    // Calculate toolbar dimensions (approximate)
+    const toolbarWidth = 280; // Approximate width on mobile
+    const toolbarHeight = 60; // Approximate height
+    const padding = 10;
+
+    // Calculate initial position
+    let x = rect.left + rect.width / 2 + window.scrollX;
+    let y = rect.top + window.scrollY - toolbarHeight - 15;
+
+    // Prevent toolbar from going off screen horizontally
+    const maxX = window.innerWidth + window.scrollX - padding;
+    const minX = window.scrollX + padding;
+
+    if (x + toolbarWidth / 2 > maxX) {
+      x = maxX - toolbarWidth / 2;
+    }
+    if (x - toolbarWidth / 2 < minX) {
+      x = minX + toolbarWidth / 2;
+    }
+
+    // If toolbar would be above viewport, show it below the selection instead
+    if (y < window.scrollY + padding) {
+      y = rect.bottom + window.scrollY + 15;
+    }
+
+    setPosition({ x, y });
   }, []);
 
   useEffect(() => {
@@ -208,11 +229,11 @@ export function TextSelectionToolbar({
   return (
     <div
       ref={toolbarRef}
-      className="fixed z-[100] bg-card border border-border rounded-lg shadow-2xl p-2 md:p-1.5 flex items-center gap-1.5 md:gap-1"
+      className="fixed z-[100] bg-card border border-border rounded-lg shadow-2xl p-1.5 md:p-1.5 flex items-center gap-1 md:gap-1"
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        transform: "translate(-50%, calc(-100% - 10px))",
+        transform: "translate(-50%, 0)",
       }}
       onMouseDown={(e) => {
         // Prevent default to keep selection
@@ -240,10 +261,10 @@ export function TextSelectionToolbar({
           e.stopPropagation();
           applyModification("bold");
         }}
-        className="p-2.5 md:p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation"
+        className="p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation"
         title="Bold"
       >
-        <Bold className="w-5 h-5 md:w-4 md:h-4" />
+        <Bold className="w-4.5 h-4.5 md:w-4 md:h-4" />
       </button>
 
       {/* Italic */}
@@ -262,14 +283,14 @@ export function TextSelectionToolbar({
           e.stopPropagation();
           applyModification("italic");
         }}
-        className="p-2.5 md:p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation"
+        className="p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation"
         title="Italic"
       >
-        <Italic className="w-5 h-5 md:w-4 md:h-4" />
+        <Italic className="w-4.5 h-4.5 md:w-4 md:h-4" />
       </button>
 
       {/* Separator */}
-      <div className="w-px h-6 bg-border mx-1" />
+      <div className="w-px h-5 bg-border mx-0.5" />
 
       {/* Highlight */}
       <div className="relative">
@@ -290,15 +311,15 @@ export function TextSelectionToolbar({
             setShowHighlightColors(!showHighlightColors);
             setShowTextColors(false);
           }}
-          className={`p-2.5 md:p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation ${showHighlightColors ? 'bg-accent' : ''}`}
+          className={`p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation ${showHighlightColors ? 'bg-accent' : ''}`}
           title="Highlight"
         >
-          <Highlighter className="w-5 h-5 md:w-4 md:h-4" />
+          <Highlighter className="w-4.5 h-4.5 md:w-4 md:h-4" />
         </button>
 
         {showHighlightColors && (
           <div
-            className="absolute top-full left-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-2 flex gap-1.5 z-[110]"
+            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-card border border-border rounded-lg shadow-lg p-1.5 flex gap-1.5 z-[110]"
             onMouseDown={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -327,7 +348,7 @@ export function TextSelectionToolbar({
                   console.log("Highlight color clicked:", color);
                   applyModification("highlight", color);
                 }}
-                className="w-8 h-8 md:w-7 md:h-7 rounded border-2 border-border hover:border-foreground active:scale-95 hover:scale-110 transition-all cursor-pointer touch-manipulation"
+                className="w-7 h-7 rounded border-2 border-border hover:border-foreground active:scale-95 transition-all cursor-pointer touch-manipulation"
                 style={{ backgroundColor: color }}
                 title={`Highlight with ${color}`}
               />
@@ -352,10 +373,10 @@ export function TextSelectionToolbar({
           e.stopPropagation();
           applyModification("underline");
         }}
-        className="p-2.5 md:p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation"
+        className="p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation"
         title="Underline"
       >
-        <Underline className="w-5 h-5 md:w-4 md:h-4" />
+        <Underline className="w-4.5 h-4.5 md:w-4 md:h-4" />
       </button>
 
       {/* Text Color */}
@@ -377,15 +398,15 @@ export function TextSelectionToolbar({
             setShowTextColors(!showTextColors);
             setShowHighlightColors(false);
           }}
-          className={`p-2.5 md:p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation ${showTextColors ? 'bg-accent' : ''}`}
+          className={`p-2 hover:bg-accent active:bg-accent rounded transition-colors touch-manipulation ${showTextColors ? 'bg-accent' : ''}`}
           title="Text Color"
         >
-          <Type className="w-5 h-5 md:w-4 md:h-4" />
+          <Type className="w-4.5 h-4.5 md:w-4 md:h-4" />
         </button>
 
         {showTextColors && (
           <div
-            className="absolute top-full right-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-2 flex gap-1.5 z-[110]"
+            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-card border border-border rounded-lg shadow-lg p-1.5 flex gap-1.5 z-[110]"
             onMouseDown={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -414,7 +435,7 @@ export function TextSelectionToolbar({
                   console.log("Text color clicked:", color);
                   applyModification("color", color);
                 }}
-                className="w-8 h-8 md:w-7 md:h-7 rounded border-2 border-border hover:border-foreground active:scale-95 hover:scale-110 transition-all cursor-pointer touch-manipulation"
+                className="w-7 h-7 rounded border-2 border-border hover:border-foreground active:scale-95 transition-all cursor-pointer touch-manipulation"
                 style={{ backgroundColor: color }}
                 title={`Color text with ${color}`}
               />
