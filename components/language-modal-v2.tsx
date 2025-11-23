@@ -34,6 +34,7 @@ export function LanguageModalV2({
       onClose={onClose}
       title="Change Language"
       coverImage={coverImage}
+      height="65vh"
     >
       <div className="max-w-md mx-auto space-y-6">
         {/* Language Grid */}

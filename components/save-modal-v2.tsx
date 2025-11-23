@@ -24,55 +24,139 @@ export function SaveModalV2({
   const handleDownloadPDF = async () => {
     setIsGenerating(true);
     try {
-      // Import jsPDF dynamically to avoid SSR issues
       const { jsPDF } = await import("jspdf");
 
-      // Create new PDF document
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: "a4",
       });
 
-      // Set font
-      doc.setFont("helvetica");
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 20;
+      const contentWidth = pageWidth - 2 * margin;
+      let yPosition = margin;
 
-      // Add title
-      doc.setFontSize(20);
-      doc.setFont("helvetica", "bold");
-      const titleLines = doc.splitTextToSize(articleTitle, 170);
-      doc.text(titleLines, 20, 20);
-
-      // Add content
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-
-      // Remove HTML tags from content
-      const cleanContent = articleContent
-        .replace(/<[^>]*>/g, " ")
-        .replace(/&nbsp;/g, " ")
-        .replace(/&amp;/g, "&")
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">")
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      // Split content into lines that fit the page
-      const contentLines = doc.splitTextToSize(cleanContent, 170);
-
-      let yPosition = 40;
-      const pageHeight = 280;
-      const lineHeight = 7;
-
-      contentLines.forEach((line: string) => {
-        if (yPosition + lineHeight > pageHeight) {
+      // Helper function to add new page if needed
+      const checkAddPage = (requiredSpace: number) => {
+        if (yPosition + requiredSpace > pageHeight - margin) {
           doc.addPage();
-          yPosition = 20;
+          yPosition = margin;
+          return true;
         }
-        doc.text(line, 20, yPosition);
-        yPosition += lineHeight;
+        return false;
+      };
+
+      // Title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      const titleLines = doc.splitTextToSize(articleTitle, contentWidth);
+      titleLines.forEach((line: string) => {
+        checkAddPage(12);
+        doc.text(line, margin, yPosition);
+        yPosition += 12;
+      });
+
+      yPosition += 10;
+
+      // Parse HTML content
+      const parser = new DOMParser();
+      const htmlDoc = parser.parseFromString(articleContent, "text/html");
+      const elements = htmlDoc.body.querySelectorAll("*");
+
+      elements.forEach((element) => {
+        const tagName = element.tagName.toLowerCase();
+        const text = element.textContent?.trim() || "";
+
+        if (!text) return;
+
+        // Skip if text is already in parent
+        if (element.parentElement && element.parentElement.textContent === text) {
+          return;
+        }
+
+        switch (tagName) {
+          case "h1":
+          case "h2":
+            checkAddPage(15);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(18);
+            const h1Lines = doc.splitTextToSize(text, contentWidth);
+            h1Lines.forEach((line: string) => {
+              doc.text(line, margin, yPosition);
+              yPosition += 9;
+            });
+            yPosition += 5;
+            break;
+
+          case "h3":
+            checkAddPage(12);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            const h3Lines = doc.splitTextToSize(text, contentWidth);
+            h3Lines.forEach((line: string) => {
+              doc.text(line, margin, yPosition);
+              yPosition += 7;
+            });
+            yPosition += 4;
+            break;
+
+          case "h4":
+          case "h5":
+          case "h6":
+            checkAddPage(10);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(12);
+            const hLines = doc.splitTextToSize(text, contentWidth);
+            hLines.forEach((line: string) => {
+              doc.text(line, margin, yPosition);
+              yPosition += 6;
+            });
+            yPosition += 3;
+            break;
+
+          case "p":
+            checkAddPage(10);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(11);
+            const pLines = doc.splitTextToSize(text, contentWidth);
+            pLines.forEach((line: string) => {
+              checkAddPage(6);
+              doc.text(line, margin, yPosition);
+              yPosition += 6;
+            });
+            yPosition += 4;
+            break;
+
+          case "li":
+            checkAddPage(8);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(11);
+            const liLines = doc.splitTextToSize("• " + text, contentWidth - 5);
+            liLines.forEach((line: string, index: number) => {
+              checkAddPage(6);
+              doc.text(line, margin + (index === 0 ? 0 : 5), yPosition);
+              yPosition += 6;
+            });
+            yPosition += 2;
+            break;
+
+          case "blockquote":
+            checkAddPage(10);
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            const quoteLines = doc.splitTextToSize(text, contentWidth - 10);
+            quoteLines.forEach((line: string) => {
+              checkAddPage(6);
+              doc.text(line, margin + 5, yPosition);
+              yPosition += 6;
+            });
+            doc.setTextColor(0, 0, 0);
+            yPosition += 4;
+            break;
+        }
       });
 
       // Add footer with source
@@ -80,19 +164,25 @@ export function SaveModalV2({
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
         doc.setTextColor(128, 128, 128);
         doc.text(
-          `Source: Etupedia - Page ${i} of ${pageCount}`,
-          20,
-          287
+          `Source: Etupedia`,
+          margin,
+          pageHeight - 10
+        );
+        doc.text(
+          `Page ${i} of ${pageCount}`,
+          pageWidth - margin - 20,
+          pageHeight - 10
         );
       }
 
-      // Save the PDF
-      const fileName = `${articleTitle.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.pdf`;
+      const fileName = `${articleTitle
+        .replace(/[^a-z0-9]/gi, "_")
+        .toLowerCase()}.pdf`;
       doc.save(fileName);
 
-      // Show success feedback
       setTimeout(() => {
         onClose();
       }, 500);
@@ -110,6 +200,7 @@ export function SaveModalV2({
       onClose={onClose}
       title="Save Article"
       coverImage={coverImage}
+      height="50vh"
     >
       <div className="max-w-md mx-auto space-y-6">
         {/* Preview Card */}
@@ -121,7 +212,7 @@ export function SaveModalV2({
             <div className="flex-1">
               <h3 className="font-semibold mb-1">{articleTitle}</h3>
               <p className="text-sm text-muted-foreground">
-                Download as PDF document
+                Download as formatted PDF document with proper structure
               </p>
             </div>
           </div>
@@ -149,9 +240,20 @@ export function SaveModalV2({
         </div>
 
         {/* Info */}
-        <p className="text-xs text-center text-muted-foreground">
-          The PDF will include the full article content in a formatted document.
-        </p>
+        <div className="bg-accent/30 rounded-lg p-4 border border-border">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">
+              PDF includes:
+            </span>
+            <br />
+            • Formatted headings and subheadings
+            <br />
+            • Structured paragraphs
+            <br />
+            • Proper spacing and typography
+            <br />• Page numbers and source attribution
+          </p>
+        </div>
       </div>
     </BottomSheet>
   );

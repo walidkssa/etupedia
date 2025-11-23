@@ -86,6 +86,10 @@ export default function ArticlePage() {
   };
 
   const handleLanguageChange = (lang: string) => {
+    // Update URL with new language parameter
+    const newUrl = `/article/${slug}?lang=${lang}`;
+    window.history.pushState({}, '', newUrl);
+
     // Fetch article in new language
     fetchArticle(slug, lang);
   };

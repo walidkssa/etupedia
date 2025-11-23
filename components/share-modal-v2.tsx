@@ -70,6 +70,7 @@ export function ShareModalV2({
       onClose={onClose}
       title={activeTab === "article" ? "Share Article" : "Share Text"}
       coverImage={coverImage}
+      height="70vh"
     >
       <div className="max-w-md mx-auto space-y-6">
         {/* Tabs - if there's selected text */}

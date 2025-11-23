@@ -10,7 +10,7 @@ interface BottomSheetProps {
   title: string;
   coverImage?: string;
   children: React.ReactNode;
-  height?: string; // Default "50%"
+  height?: string;
 }
 
 export function BottomSheet({
@@ -19,19 +19,22 @@ export function BottomSheet({
   title,
   coverImage,
   children,
-  height = "50%",
+  height = "50vh",
 }: BottomSheetProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
   const [currentTranslate, setCurrentTranslate] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
+      setIsAnimating(true);
       setCurrentTranslate(0);
     } else {
       document.body.style.overflow = "unset";
+      setCurrentTranslate(0);
     }
 
     return () => {
@@ -42,6 +45,7 @@ export function BottomSheet({
   const handleDragStart = (clientY: number) => {
     setIsDragging(true);
     setDragStartY(clientY);
+    setIsAnimating(false);
   };
 
   const handleDragMove = (clientY: number) => {
@@ -49,24 +53,23 @@ export function BottomSheet({
 
     const deltaY = clientY - dragStartY;
     if (deltaY > 0) {
-      // Only allow dragging down
       setCurrentTranslate(deltaY);
     }
   };
 
   const handleDragEnd = () => {
     setIsDragging(false);
+    setIsAnimating(true);
 
-    // If dragged down more than 100px, close the sheet
     if (currentTranslate > 100) {
       onClose();
+    } else {
+      setCurrentTranslate(0);
     }
 
-    setCurrentTranslate(0);
     setDragStartY(0);
   };
 
-  // Touch events
   const handleTouchStart = (e: React.TouchEvent) => {
     handleDragStart(e.touches[0].clientY);
   };
@@ -79,7 +82,6 @@ export function BottomSheet({
     handleDragEnd();
   };
 
-  // Mouse events
   const handleMouseDown = (e: React.MouseEvent) => {
     handleDragStart(e.clientY);
   };
@@ -110,7 +112,7 @@ export function BottomSheet({
     <div className="fixed inset-0 z-50">
       {/* Background image with blur */}
       {coverImage && (
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 animate-in fade-in duration-300">
           <Image
             src={coverImage}
             alt="Background"
@@ -126,31 +128,29 @@ export function BottomSheet({
       {/* Fallback if no image */}
       {!coverImage && (
         <div
-          className="absolute inset-0 bg-background/95 backdrop-blur-sm"
+          className="absolute inset-0 bg-background/95 backdrop-blur-sm animate-in fade-in duration-300"
           onClick={onClose}
         />
       )}
 
       {/* Backdrop overlay */}
       {coverImage && (
-        <div
-          className="absolute inset-0"
-          onClick={onClose}
-        />
+        <div className="absolute inset-0" onClick={onClose} />
       )}
 
       {/* Bottom Sheet */}
       <div
         ref={sheetRef}
-        className="absolute bottom-0 left-0 right-0 bg-background rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out"
+        className="absolute bottom-0 left-0 right-0 bg-background rounded-t-3xl shadow-2xl flex flex-col"
         style={{
           height: height,
-          transform: `translateY(${isOpen ? currentTranslate : "100%"}px)`,
+          transform: `translateY(${currentTranslate}px)`,
+          transition: isAnimating ? "transform 0.3s ease-out" : "none",
         }}
       >
         {/* Drag Handle */}
         <div
-          className="flex flex-col items-center pt-3 pb-2 cursor-grab active:cursor-grabbing"
+          className="flex flex-col items-center pt-3 pb-2 cursor-grab active:cursor-grabbing shrink-0"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -160,7 +160,7 @@ export function BottomSheet({
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-4 pb-4 border-b border-border">
+        <div className="flex items-center justify-between px-4 pb-4 border-b border-border shrink-0">
           <button
             onClick={onClose}
             className="p-2 hover:bg-accent rounded-lg transition-colors"
@@ -172,8 +172,8 @@ export function BottomSheet({
           <div className="w-9" />
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Content - SCROLLABLE */}
+        <div className="flex-1 overflow-y-auto overscroll-contain p-6">
           {children}
         </div>
       </div>
