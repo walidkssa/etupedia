@@ -77,12 +77,6 @@ export function ArticleSidebarImages({ images }: ArticleSidebarImagesProps) {
     }
   }, [activeImageIndex, images]);
 
-  if (!isVisible || images.length === 0) {
-    return null;
-  }
-
-  const currentImage = images[activeImageIndex];
-
   // Close modal on ESC key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -103,6 +97,12 @@ export function ArticleSidebarImages({ images }: ArticleSidebarImagesProps) {
       document.body.style.overflow = "unset";
     };
   }, [modalImage]);
+
+  if (!isVisible || images.length === 0) {
+    return null;
+  }
+
+  const currentImage = images[activeImageIndex];
 
   return (
     <>
