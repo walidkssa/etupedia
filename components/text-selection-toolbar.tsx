@@ -100,50 +100,24 @@ export function TextSelectionToolbar({
         if (text && text.length > 0 && selection && selection.rangeCount > 0) {
           const range = selection.getRangeAt(0);
 
-          // Check if selection is within article body - ULTRA ROBUST check
+          // Check if selection is within article body - SIMPLE AND EFFECTIVE
           const articleBody = document.querySelector('.article-body');
           if (articleBody) {
-            // Helper function to check if a node is within article body
-            const isNodeInArticle = (node: Node): boolean => {
-              if (!node) return false;
+            // Get the actual DOM node (handle text nodes by using parentElement)
+            const startNode = range.startContainer.nodeType === Node.TEXT_NODE
+              ? range.startContainer.parentElement
+              : range.startContainer;
 
-              // If it's a text node, check its parent
-              if (node.nodeType === Node.TEXT_NODE) {
-                return node.parentNode ? isNodeInArticle(node.parentNode) : false;
-              }
+            const endNode = range.endContainer.nodeType === Node.TEXT_NODE
+              ? range.endContainer.parentElement
+              : range.endContainer;
 
-              // If it's an element, check if it's contained or IS the article body
-              if (node.nodeType === Node.ELEMENT_NODE) {
-                return node === articleBody || articleBody.contains(node);
-              }
+            // Simple check: are both start and end nodes inside article body?
+            const isInArticle = startNode && endNode &&
+              (articleBody.contains(startNode) || articleBody === startNode) &&
+              (articleBody.contains(endNode) || articleBody === endNode);
 
-              return false;
-            };
-
-            // Get selection containers
-            const startContainer = range.startContainer;
-            const endContainer = range.endContainer;
-            const commonAncestor = range.commonAncestorContainer;
-
-            // Triple check: start, end, and common ancestor
-            const isStartInArticle = isNodeInArticle(startContainer);
-            const isEndInArticle = isNodeInArticle(endContainer);
-            const isCommonInArticle = isNodeInArticle(commonAncestor);
-
-            // Log for debugging
-            console.log('Selection check:', {
-              hasText: !!text,
-              startIn: isStartInArticle,
-              endIn: isEndInArticle,
-              commonIn: isCommonInArticle,
-              startNodeType: startContainer.nodeType,
-              endNodeType: endContainer.nodeType,
-              startParent: startContainer.parentNode?.nodeName,
-              endParent: endContainer.parentNode?.nodeName
-            });
-
-            // Accept selection if ALL checks pass
-            if (isStartInArticle && isEndInArticle && isCommonInArticle) {
+            if (isInArticle) {
               // Save the selection
               savedRange.current = range.cloneRange();
               savedSelection.current = {
@@ -153,8 +127,6 @@ export function TextSelectionToolbar({
 
               updateToolbarPosition();
               setIsVisible(true);
-            } else {
-              console.log('Selection rejected - not fully in article body');
             }
           }
         } else {
