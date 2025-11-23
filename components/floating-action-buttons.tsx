@@ -153,6 +153,15 @@ export function FloatingActionButtons({
 
   return (
     <div className="fixed right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-3">
+      {/* PDF Download Button */}
+      <button
+        onClick={handlePdfClick}
+        className="p-2.5 bg-card border border-border rounded-lg shadow-lg hover:bg-accent transition-colors"
+        aria-label="Download PDF"
+      >
+        <Download className="w-5 h-5 text-muted-foreground" />
+      </button>
+
       {/* Table of Contents */}
       <HoverCard open={isTocOpen} onOpenChange={setIsTocOpen} openDelay={200} closeDelay={200}>
         <HoverCardTrigger asChild>
@@ -190,15 +199,6 @@ export function FloatingActionButtons({
         aria-label="Search"
       >
         <Search className="w-5 h-5 text-muted-foreground" />
-      </button>
-
-      {/* PDF Download Button */}
-      <button
-        onClick={handlePdfClick}
-        className="p-2.5 bg-card border border-border rounded-lg shadow-lg hover:bg-accent transition-colors"
-        aria-label="Download PDF"
-      >
-        <Download className="w-5 h-5 text-muted-foreground" />
       </button>
 
       {/* Theme Toggle */}
