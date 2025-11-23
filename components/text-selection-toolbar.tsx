@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   Highlighter,
   Underline,
   Type,
-  Palette,
   Bold,
   Italic,
 } from "lucide-react";
@@ -46,7 +45,22 @@ export function TextSelectionToolbar({
   const [showHighlightColors, setShowHighlightColors] = useState(false);
   const [showTextColors, setShowTextColors] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
-  const selectionRef = useRef<Selection | null>(null);
+  const savedRange = useRef<Range | null>(null);
+  const savedSelection = useRef<{ text: string; range: Range } | null>(null);
+
+  const updateToolbarPosition = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    // Use window.pageYOffset to account for scroll position
+    setPosition({
+      x: rect.left + rect.width / 2 + window.pageXOffset,
+      y: rect.top + window.pageYOffset - 10,
+    });
+  }, []);
 
   useEffect(() => {
     const handleSelection = () => {
@@ -54,94 +68,126 @@ export function TextSelectionToolbar({
       const text = selection?.toString().trim();
 
       if (text && text.length > 0 && selection && selection.rangeCount > 0) {
-        selectionRef.current = selection;
         const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
 
-        setPosition({
-          x: rect.left + rect.width / 2,
-          y: rect.top - 10,
-        });
-        setIsVisible(true);
-        setShowHighlightColors(false);
-        setShowTextColors(false);
+        // Check if selection is within article body
+        const articleBody = document.querySelector('.article-body');
+        if (articleBody && articleBody.contains(range.commonAncestorContainer)) {
+          // Save the selection
+          savedRange.current = range.cloneRange();
+          savedSelection.current = {
+            text,
+            range: range.cloneRange(),
+          };
+
+          updateToolbarPosition();
+          setIsVisible(true);
+          setShowHighlightColors(false);
+          setShowTextColors(false);
+        }
       } else {
-        setIsVisible(false);
-        setShowHighlightColors(false);
-        setShowTextColors(false);
+        // Delay hiding to allow button clicks
+        setTimeout(() => {
+          if (!toolbarRef.current?.matches(':hover')) {
+            setIsVisible(false);
+            setShowHighlightColors(false);
+            setShowTextColors(false);
+          }
+        }, 100);
+      }
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
+        const selection = window.getSelection();
+        if (!selection || selection.toString().trim().length === 0) {
+          setIsVisible(false);
+          setShowHighlightColors(false);
+          setShowTextColors(false);
+        }
       }
     };
 
     document.addEventListener("mouseup", handleSelection);
     document.addEventListener("touchend", handleSelection);
+    document.addEventListener("click", handleClickOutside);
 
     return () => {
       document.removeEventListener("mouseup", handleSelection);
       document.removeEventListener("touchend", handleSelection);
+      document.removeEventListener("click", handleClickOutside);
     };
-  }, []);
+  }, [updateToolbarPosition]);
 
-  const applyModification = (
+  const applyModification = useCallback((
     type: "highlight" | "underline" | "color" | "bold" | "italic",
     color?: string
   ) => {
-    const selection = selectionRef.current;
-    if (!selection || selection.rangeCount === 0) return;
+    if (!savedSelection.current) return;
 
-    const range = selection.getRangeAt(0);
-    const text = selection.toString();
+    const { text, range } = savedSelection.current;
 
-    // Create a span element with the styling
-    const span = document.createElement("span");
-    span.textContent = text;
-    span.setAttribute("data-modification", type);
-    span.setAttribute("data-modification-id", Date.now().toString());
+    try {
+      // Create a span element with the styling
+      const span = document.createElement("span");
+      span.textContent = text;
+      span.setAttribute("data-modification", type);
+      span.setAttribute("data-modification-id", Date.now().toString());
 
-    // Apply styles based on type
-    switch (type) {
-      case "highlight":
-        span.style.backgroundColor = color || HIGHLIGHT_COLORS[0];
-        span.style.padding = "2px 0";
-        break;
-      case "underline":
-        span.style.textDecoration = "underline";
-        span.style.textDecorationThickness = "2px";
-        break;
-      case "color":
-        span.style.color = color || TEXT_COLORS[0];
-        break;
-      case "bold":
-        span.style.fontWeight = "bold";
-        break;
-      case "italic":
-        span.style.fontStyle = "italic";
-        break;
+      // Apply styles based on type
+      switch (type) {
+        case "highlight":
+          span.style.backgroundColor = color || HIGHLIGHT_COLORS[0];
+          span.style.padding = "2px 4px";
+          span.style.borderRadius = "3px";
+          break;
+        case "underline":
+          span.style.textDecoration = "underline";
+          span.style.textDecorationThickness = "2px";
+          span.style.textUnderlineOffset = "2px";
+          break;
+        case "color":
+          span.style.color = color || TEXT_COLORS[0];
+          break;
+        case "bold":
+          span.style.fontWeight = "bold";
+          break;
+        case "italic":
+          span.style.fontStyle = "italic";
+          break;
+      }
+
+      // Replace the selected text with the styled span
+      range.deleteContents();
+      range.insertNode(span);
+
+      // Create modification object for PDF export
+      const modification: TextModification = {
+        id: span.getAttribute("data-modification-id") || Date.now().toString(),
+        text,
+        type,
+        color,
+        range: {
+          start: 0,
+          end: text.length,
+        },
+      };
+
+      onModification(modification);
+
+      // Clear selection and hide toolbar
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+
+      setIsVisible(false);
+      setShowHighlightColors(false);
+      setShowTextColors(false);
+      savedSelection.current = null;
+      savedRange.current = null;
+    } catch (error) {
+      console.error("Error applying modification:", error);
     }
-
-    // Replace the selected text with the styled span
-    range.deleteContents();
-    range.insertNode(span);
-
-    // Create modification object for PDF export
-    const modification: TextModification = {
-      id: span.getAttribute("data-modification-id") || Date.now().toString(),
-      text,
-      type,
-      color,
-      range: {
-        start: 0, // Will be calculated based on position in document
-        end: text.length,
-      },
-    };
-
-    onModification(modification);
-
-    // Clear selection and hide toolbar
-    selection.removeAllRanges();
-    setIsVisible(false);
-    setShowHighlightColors(false);
-    setShowTextColors(false);
-  };
+  }, [onModification]);
 
   if (!isVisible) return null;
 
@@ -149,15 +195,20 @@ export function TextSelectionToolbar({
     <>
       <div
         ref={toolbarRef}
-        className="fixed z-50 bg-card border border-border rounded-lg shadow-2xl p-1.5 flex items-center gap-1 animate-in fade-in slide-in-from-top-2 duration-200"
+        className="fixed z-50 bg-card border border-border rounded-lg shadow-2xl p-1.5 flex items-center gap-1"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
           transform: "translate(-50%, -100%)",
         }}
+        onMouseDown={(e) => {
+          // Prevent toolbar from stealing focus and clearing selection
+          e.preventDefault();
+        }}
       >
         {/* Bold */}
         <button
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => applyModification("bold")}
           className="p-2 hover:bg-accent rounded transition-colors"
           title="Bold"
@@ -167,6 +218,7 @@ export function TextSelectionToolbar({
 
         {/* Italic */}
         <button
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => applyModification("italic")}
           className="p-2 hover:bg-accent rounded transition-colors"
           title="Italic"
@@ -180,7 +232,9 @@ export function TextSelectionToolbar({
         {/* Highlight */}
         <div className="relative">
           <button
-            onClick={() => {
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              e.stopPropagation();
               setShowHighlightColors(!showHighlightColors);
               setShowTextColors(false);
             }}
@@ -191,11 +245,18 @@ export function TextSelectionToolbar({
           </button>
 
           {showHighlightColors && (
-            <div className="absolute top-full left-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-2 flex gap-1.5">
+            <div
+              className="absolute top-full left-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-2 flex gap-1.5 z-50"
+              onMouseDown={(e) => e.preventDefault()}
+            >
               {HIGHLIGHT_COLORS.map((color) => (
                 <button
                   key={color}
-                  onClick={() => applyModification("highlight", color)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    applyModification("highlight", color);
+                  }}
                   className="w-6 h-6 rounded border-2 border-border hover:border-foreground transition-colors"
                   style={{ backgroundColor: color }}
                   title={`Highlight with ${color}`}
@@ -207,6 +268,7 @@ export function TextSelectionToolbar({
 
         {/* Underline */}
         <button
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => applyModification("underline")}
           className="p-2 hover:bg-accent rounded transition-colors"
           title="Underline"
@@ -217,7 +279,9 @@ export function TextSelectionToolbar({
         {/* Text Color */}
         <div className="relative">
           <button
-            onClick={() => {
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              e.stopPropagation();
               setShowTextColors(!showTextColors);
               setShowHighlightColors(false);
             }}
@@ -228,11 +292,18 @@ export function TextSelectionToolbar({
           </button>
 
           {showTextColors && (
-            <div className="absolute top-full right-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-2 flex gap-1.5">
+            <div
+              className="absolute top-full right-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-2 flex gap-1.5 z-50"
+              onMouseDown={(e) => e.preventDefault()}
+            >
               {TEXT_COLORS.map((color) => (
                 <button
                   key={color}
-                  onClick={() => applyModification("color", color)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    applyModification("color", color);
+                  }}
                   className="w-6 h-6 rounded border-2 border-border hover:border-foreground transition-colors"
                   style={{ backgroundColor: color }}
                   title={`Color text with ${color}`}
