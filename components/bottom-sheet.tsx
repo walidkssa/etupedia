@@ -11,6 +11,7 @@ interface BottomSheetProps {
   coverImage?: string;
   children: React.ReactNode;
   height?: string;
+  hideCloseButton?: boolean;
 }
 
 export function BottomSheet({
@@ -20,6 +21,7 @@ export function BottomSheet({
   coverImage,
   children,
   height = "50vh",
+  hideCloseButton = false,
 }: BottomSheetProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
@@ -160,16 +162,17 @@ export function BottomSheet({
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-4 pb-4 border-b border-border shrink-0">
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-accent rounded-lg transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
+        <div className="flex items-center justify-center px-4 pb-4 border-b border-border shrink-0">
+          {!hideCloseButton && (
+            <button
+              onClick={onClose}
+              className="absolute left-4 p-2 hover:bg-accent rounded-lg transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
           <h2 className="text-lg font-medium">{title}</h2>
-          <div className="w-9" />
         </div>
 
         {/* Content - SCROLLABLE */}

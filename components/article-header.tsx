@@ -26,20 +26,16 @@ export function ArticleHeader({
           <ChevronLeft className="w-5 h-5" />
         </Link>
 
-        {/* Logo */}
+        {/* Logo - Text "etupedia" in Libre Baskerville */}
         <Link href="/" className="flex-1 flex justify-center">
-          <svg
-            width="32"
-            height="32"
-            viewBox="0 0 32 32"
-            fill="none"
-            className="text-foreground"
+          <span
+            className="text-2xl font-bold tracking-tight text-foreground transition-colors"
+            style={{
+              fontFamily: "var(--font-libre-baskerville)",
+            }}
           >
-            <path
-              d="M8 4L4 28H10L12 18H20L22 28H28L24 4H18L16 14H12L14 4H8Z"
-              fill="currentColor"
-            />
-          </svg>
+            etupedia
+          </span>
         </Link>
 
         {/* Menu/Theme Button */}

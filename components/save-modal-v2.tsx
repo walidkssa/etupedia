@@ -201,6 +201,7 @@ export function SaveModalV2({
       title="Save Article"
       coverImage={coverImage}
       height="50vh"
+      hideCloseButton
     >
       <div className="max-w-md mx-auto space-y-6">
         {/* Preview Card */}

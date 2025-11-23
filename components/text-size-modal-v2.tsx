@@ -58,6 +58,7 @@ export function TextSizeModalV2({
       title="Customize Text"
       coverImage={coverImage}
       height="60vh"
+      hideCloseButton
     >
       <div className="max-w-md mx-auto space-y-8">
         {/* Large Aa with dynamic sizing */}

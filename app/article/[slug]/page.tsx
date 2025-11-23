@@ -185,10 +185,16 @@ export default function ArticlePage() {
           </div>
 
           {/* Article Body */}
-          <div
-            className="article-body py-8 max-w-3xl"
-            style={{ fontSize: `${textSize}px` }}
-          >
+          <div className="article-body py-8 max-w-3xl">
+            <style jsx>{`
+              .article-body :global(p),
+              .article-body :global(li),
+              .article-body :global(td),
+              .article-body :global(blockquote) {
+                font-size: ${textSize}px !important;
+                line-height: 1.6;
+              }
+            `}</style>
             <ArticleContent
               content={article.content}
               language={currentLanguage}
