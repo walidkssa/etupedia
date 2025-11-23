@@ -67,14 +67,20 @@ export function extractImagesFromContent(htmlContent: string): {
       }
     }
 
-    // If no paragraph ID was found, create one based on the image position
+    // If no paragraph ID was found, create a marker div where the image was
     if (!paragraphId) {
-      const wrapper = doc.createElement("div");
-      wrapper.id = `paragraph-with-image-${order}`;
-      wrapper.className = "image-paragraph-wrapper";
-      img.parentNode?.insertBefore(wrapper, img);
-      wrapper.appendChild(img);
-      paragraphId = wrapper.id;
+      const marker = doc.createElement("div");
+      marker.id = `paragraph-with-image-${order}`;
+      marker.className = "image-paragraph-marker";
+      // Insert marker before the image
+      img.parentNode?.insertBefore(marker, img);
+      paragraphId = marker.id;
+    } else {
+      // Add a marker class to the parent for tracking
+      const parentElement = document.getElementById(paragraphId);
+      if (parentElement) {
+        parentElement.classList.add("has-sidebar-image");
+      }
     }
 
     images.push({
@@ -89,10 +95,17 @@ export function extractImagesFromContent(htmlContent: string): {
 
     order++;
 
-    // Remove the image from the content (optional - we keep it for mobile)
-    // For now, we'll keep images in the content and just hide them on desktop via CSS
-    img.setAttribute("data-sidebar-image", "true");
-    img.setAttribute("data-image-order", order.toString());
+    // IMPORTANT: Remove the image completely from the content
+    // It will only appear in the sidebar
+    const parentToClean = img.parentElement;
+    img.remove();
+
+    // If parent was a figure or wrapper that's now empty, remove it too
+    if (parentToClean &&
+        (parentToClean.tagName === "FIGURE" || parentToClean.classList.contains("image-wrapper")) &&
+        !parentToClean.textContent?.trim()) {
+      parentToClean.remove();
+    }
   });
 
   return {

@@ -50,11 +50,11 @@ export default function ArticlePage() {
   // Text modifications for PDF export
   const [textModifications, setTextModifications] = useState<any[]>([]);
 
-  // Extract images from article content
-  const extractedImages = useMemo(() => {
-    if (!article?.content) return [];
-    const { images } = extractImagesFromContent(article.content);
-    return images;
+  // Extract images from article content and get cleaned content without images
+  const { extractedImages, cleanedContent } = useMemo(() => {
+    if (!article?.content) return { extractedImages: [], cleanedContent: "" };
+    const { images, cleanedContent } = extractImagesFromContent(article.content);
+    return { extractedImages: images, cleanedContent };
   }, [article?.content]);
 
   useEffect(() => {
@@ -253,7 +253,7 @@ export default function ArticlePage() {
               }
             `}</style>
             <ArticleContent
-              content={article.content}
+              content={cleanedContent || article.content}
               language={currentLanguage}
             />
           </div>
