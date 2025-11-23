@@ -1,19 +1,19 @@
 "use client";
 
-import { Globe2, Type, Bookmark, Share2 } from "lucide-react";
+import { Globe2, Type, Download, Share2 } from "lucide-react";
 
 interface BottomNavProps {
   onLanguageClick: () => void;
   onTextSizeClick: () => void;
   onShareClick: () => void;
-  onBookmarkClick?: () => void;
+  onSaveClick: () => void;
 }
 
 export function BottomNavV2({
   onLanguageClick,
   onTextSizeClick,
   onShareClick,
-  onBookmarkClick,
+  onSaveClick,
 }: BottomNavProps) {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border md:hidden">
@@ -38,13 +38,13 @@ export function BottomNavV2({
           <span className="text-[10px] font-medium">Aa</span>
         </button>
 
-        {/* Bookmark */}
+        {/* Save */}
         <button
-          onClick={onBookmarkClick}
+          onClick={onSaveClick}
           className="flex flex-col items-center gap-0.5 p-2 rounded-lg transition-colors active:bg-accent"
-          aria-label="Bookmark"
+          aria-label="Save"
         >
-          <Bookmark className="w-6 h-6" strokeWidth={1.5} />
+          <Download className="w-6 h-6" strokeWidth={1.5} />
         </button>
 
         {/* Share */}

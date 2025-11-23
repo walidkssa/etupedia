@@ -1,8 +1,8 @@
 "use client";
 
-import { X, Instagram, Facebook, MessageCircle, Link as LinkIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import Image from "next/image";
+import { BottomSheet } from "@/components/bottom-sheet";
+import { Share2, Link as LinkIcon, Check } from "lucide-react";
+import { useState } from "react";
 import { useTheme } from "@/components/theme-provider";
 
 interface ShareModalProps {
@@ -32,19 +32,6 @@ export function ShareModalV2({
   );
   const { theme } = useTheme();
 
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-      setCopied(false);
-    }
-
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isOpen]);
-
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(articleUrl);
@@ -55,53 +42,44 @@ export function ShareModalV2({
     }
   };
 
-  if (!isOpen) return null;
+  const handleNativeShare = async () => {
+    const shareData = {
+      title: activeTab === "article" ? articleTitle : `Quote from ${articleTitle}`,
+      text: activeTab === "article" ? articleExcerpt : selectedText,
+      url: articleUrl,
+    };
+
+    try {
+      if (navigator.share && navigator.canShare?.(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback to copy link
+        await handleCopyLink();
+      }
+    } catch (error) {
+      // User cancelled or error occurred
+      if ((error as Error).name !== "AbortError") {
+        console.error("Share error:", error);
+      }
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-50">
-      {/* Background image with blur */}
-      {coverImage && (
-        <div className="absolute inset-0">
-          <Image
-            src={coverImage}
-            alt="Background"
-            fill
-            className="object-cover"
-            style={{ filter: 'blur(40px)' }}
-            priority
-          />
-          <div className="absolute inset-0 bg-background/60" />
-        </div>
-      )}
-
-      {!coverImage && (
-        <div className="absolute inset-0 bg-background/95 backdrop-blur-sm" />
-      )}
-
-      <div className="relative flex flex-col h-full">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4">
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-background/20 rounded-lg transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <h2 className="text-lg font-medium">
-            {activeTab === "article" ? "Share Article" : "Share Text"}
-          </h2>
-          <div className="w-9" />
-        </div>
-
+    <BottomSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      title={activeTab === "article" ? "Share Article" : "Share Text"}
+      coverImage={coverImage}
+    >
+      <div className="max-w-md mx-auto space-y-6">
         {/* Tabs - if there's selected text */}
         {selectedText && (
-          <div className="flex border-b border-foreground/20 bg-background/20">
+          <div className="flex border-b border-border rounded-lg overflow-hidden bg-muted/30">
             <button
               onClick={() => setActiveTab("article")}
               className={`flex-1 py-3 text-sm font-medium transition-colors ${
                 activeTab === "article"
-                  ? "text-foreground border-b-2 border-foreground"
+                  ? "text-foreground bg-background"
                   : "text-foreground/60"
               }`}
             >
@@ -111,7 +89,7 @@ export function ShareModalV2({
               onClick={() => setActiveTab("text")}
               className={`flex-1 py-3 text-sm font-medium transition-colors ${
                 activeTab === "text"
-                  ? "text-foreground border-b-2 border-foreground"
+                  ? "text-foreground bg-background"
                   : "text-foreground/60"
               }`}
             >
@@ -120,116 +98,122 @@ export function ShareModalV2({
           </div>
         )}
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-md mx-auto space-y-6">
-            {/* Preview Card */}
-            <div className="rounded-2xl overflow-hidden bg-background/80 border border-foreground/10">
-              {activeTab === "article" ? (
-                <div
-                  className="relative"
-                  style={{
-                    background: `
-                      repeating-linear-gradient(
-                        0deg,
-                        transparent,
-                        transparent 2px,
-                        ${theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'} 2px,
-                        ${theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'} 4px
-                      )
-                    `
-                  }}
+        {/* Preview Card */}
+        <div className="rounded-2xl overflow-hidden bg-background border border-border">
+          {activeTab === "article" ? (
+            <div
+              className="relative"
+              style={{
+                background: `
+                  repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    ${theme === "dark" ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)"} 2px,
+                    ${theme === "dark" ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)"} 4px
+                  )
+                `,
+              }}
+            >
+              <div className="p-6">
+                <h3
+                  className="text-2xl font-bold mb-3"
+                  style={{ fontFamily: "Georgia, serif" }}
                 >
-                  <div className="p-6">
-                    <h3 className="text-2xl font-bold mb-3" style={{ fontFamily: 'Georgia, serif' }}>
-                      {articleTitle}
-                    </h3>
-                    <p className="text-sm text-foreground/70 mb-4 line-clamp-3">
-                      {articleExcerpt}
-                    </p>
-                    <div className="flex items-center gap-2 text-xs text-foreground/50">
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 32 32"
-                        fill="currentColor"
-                      >
-                        <path d="M8 4L4 28H10L12 18H20L22 28H28L24 4H18L16 14H12L14 4H8Z" />
-                      </svg>
-                      <span>Wikipedia Article</span>
-                    </div>
-                  </div>
+                  {articleTitle}
+                </h3>
+                <p className="text-sm text-foreground/70 mb-4 line-clamp-3">
+                  {articleExcerpt}
+                </p>
+                <div className="flex items-center gap-2 text-xs text-foreground/50">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 32 32"
+                    fill="currentColor"
+                  >
+                    <path d="M8 4L4 28H10L12 18H20L22 28H28L24 4H18L16 14H12L14 4H8Z" />
+                  </svg>
+                  <span>Etupedia Article</span>
                 </div>
-              ) : (
-                <div
-                  className="p-6"
-                  style={{
-                    background: `
-                      repeating-linear-gradient(
-                        0deg,
-                        transparent,
-                        transparent 2px,
-                        ${theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'} 2px,
-                        ${theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'} 4px
-                      )
-                    `
-                  }}
+              </div>
+            </div>
+          ) : (
+            <div
+              className="p-6"
+              style={{
+                background: `
+                  repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    ${theme === "dark" ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)"} 2px,
+                    ${theme === "dark" ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)"} 4px
+                  )
+                `,
+              }}
+            >
+              <div className="text-6xl text-foreground/30 mb-2">&ldquo;</div>
+              <p
+                className="font-serif text-foreground mb-3 px-2"
+                style={{ lineHeight: 1.6 }}
+              >
+                {selectedText}
+              </p>
+              <div className="text-6xl text-foreground/30 text-right mb-4">
+                &rdquo;
+              </div>
+              <div className="flex items-center gap-2 text-xs text-foreground/50">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 32 32"
+                  fill="currentColor"
                 >
-                  <div className="text-6xl text-foreground/30 mb-2">&ldquo;</div>
-                  <p className="font-serif text-foreground mb-3 px-2" style={{ lineHeight: 1.6 }}>
-                    {selectedText}
-                  </p>
-                  <div className="text-6xl text-foreground/30 text-right mb-4">&rdquo;</div>
-                  <div className="flex items-center gap-2 text-xs text-foreground/50">
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 32 32"
-                      fill="currentColor"
-                    >
-                      <path d="M8 4L4 28H10L12 18H20L22 28H28L24 4H18L16 14H12L14 4H8Z" />
-                    </svg>
-                    <span>From {articleTitle.split(" ")[0]}, Wikipedia</span>
-                  </div>
-                </div>
-              )}
+                  <path d="M8 4L4 28H10L12 18H20L22 28H28L24 4H18L16 14H12L14 4H8Z" />
+                </svg>
+                <span>From {articleTitle.split(" ")[0]}, Etupedia</span>
+              </div>
             </div>
+          )}
+        </div>
 
-            {/* Social Buttons */}
-            <div className="flex items-center justify-center gap-4">
-              <button
-                className="p-4 bg-background/40 hover:bg-background/60 rounded-full transition-colors border border-foreground/10"
-                aria-label="Share on Instagram"
-              >
-                <Instagram className="w-6 h-6" />
-              </button>
-
-              <button
-                className="p-4 bg-background/40 hover:bg-background/60 rounded-full transition-colors border border-foreground/10"
-                aria-label="Share on Facebook"
-              >
-                <Facebook className="w-6 h-6" />
-              </button>
-
-              <button
-                className="p-4 bg-background/40 hover:bg-background/60 rounded-full transition-colors border border-foreground/10"
-                aria-label="Share on TikTok"
-              >
-                <MessageCircle className="w-6 h-6" />
-              </button>
-            </div>
-
-            {/* Copy Link */}
+        {/* Share Buttons */}
+        <div className="space-y-3">
+          {/* Native Share */}
+          {typeof window !== "undefined" && "share" in navigator && (
             <button
-              onClick={handleCopyLink}
+              onClick={handleNativeShare}
               className="w-full py-4 bg-foreground text-background rounded-full font-medium hover:bg-foreground/90 transition-colors flex items-center justify-center gap-2"
             >
-              <LinkIcon className="w-5 h-5" />
-              {copied ? "Link Copied!" : "Copy Link"}
+              <Share2 className="w-5 h-5" />
+              Share
             </button>
-          </div>
+          )}
+
+          {/* Copy Link */}
+          <button
+            onClick={handleCopyLink}
+            className={`w-full py-4 rounded-full font-medium transition-colors flex items-center justify-center gap-2 ${
+              typeof window !== "undefined" && "share" in navigator
+                ? "bg-muted hover:bg-muted/80 text-foreground"
+                : "bg-foreground text-background hover:bg-foreground/90"
+            }`}
+          >
+            {copied ? (
+              <>
+                <Check className="w-5 h-5" />
+                Link Copied!
+              </>
+            ) : (
+              <>
+                <LinkIcon className="w-5 h-5" />
+                Copy Link
+              </>
+            )}
+          </button>
         </div>
       </div>
-    </div>
+    </BottomSheet>
   );
 }

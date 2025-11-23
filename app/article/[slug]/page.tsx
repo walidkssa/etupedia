@@ -11,6 +11,7 @@ import { BottomNavV2 } from "@/components/bottom-nav-v2";
 import { LanguageModalV2 } from "@/components/language-modal-v2";
 import { TextSizeModalV2 } from "@/components/text-size-modal-v2";
 import { ShareModalV2 } from "@/components/share-modal-v2";
+import { SaveModalV2 } from "@/components/save-modal-v2";
 import { ArticleContent } from "@/components/article-content";
 import { TableOfContents } from "@/components/table-of-contents";
 
@@ -27,6 +28,7 @@ export default function ArticlePage() {
   const [languageModalOpen, setLanguageModalOpen] = useState(false);
   const [textSizeModalOpen, setTextSizeModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Text size state
@@ -199,9 +201,7 @@ export default function ArticlePage() {
         onLanguageClick={() => setLanguageModalOpen(true)}
         onTextSizeClick={() => setTextSizeModalOpen(true)}
         onShareClick={() => setShareModalOpen(true)}
-        onBookmarkClick={() => {
-          // TODO: Implement bookmark functionality
-        }}
+        onSaveClick={() => setSaveModalOpen(true)}
       />
 
       {/* Modals V2 avec image blur */}
@@ -229,6 +229,14 @@ export default function ArticlePage() {
         articleImage={coverImage}
         articleUrl={typeof window !== 'undefined' ? window.location.href : ''}
         selectedText={selectedText}
+        coverImage={coverImage}
+      />
+
+      <SaveModalV2
+        isOpen={saveModalOpen}
+        onClose={() => setSaveModalOpen(false)}
+        articleTitle={article.title}
+        articleContent={article.content}
         coverImage={coverImage}
       />
     </div>
