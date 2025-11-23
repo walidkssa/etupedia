@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useTheme } from "@/components/theme-provider";
 import { ArticleWithTOC, Section } from "@/lib/types";
@@ -15,6 +15,8 @@ import { ArticleContent } from "@/components/article-content";
 import { FloatingActionButtons } from "@/components/floating-action-buttons";
 import { SearchModal } from "@/components/search-modal";
 import { TextSelectionToolbar } from "@/components/text-selection-toolbar";
+import { ArticleSidebarImages } from "@/components/article-sidebar-images";
+import { extractImagesFromContent } from "@/lib/extract-images";
 
 interface TocSection {
   id: string;
@@ -47,6 +49,13 @@ export default function ArticlePage() {
 
   // Text modifications for PDF export
   const [textModifications, setTextModifications] = useState<any[]>([]);
+
+  // Extract images from article content
+  const extractedImages = useMemo(() => {
+    if (!article?.content) return [];
+    const { images } = extractImagesFromContent(article.content);
+    return images;
+  }, [article?.content]);
 
   useEffect(() => {
     if (slug && mounted) {
@@ -191,6 +200,9 @@ export default function ArticlePage() {
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       {/* Header */}
       <ArticleHeader />
+
+      {/* Sidebar Images - Desktop Only */}
+      <ArticleSidebarImages images={extractedImages} />
 
       {/* Search Modal */}
       <SearchModal

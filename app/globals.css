@@ -82,6 +82,13 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
+
+  /* Hide inline images on desktop (xl and above) when sidebar is active */
+  @media (min-width: 1280px) {
+    .article-content img[data-sidebar-image="true"] {
+      display: none;
+    }
+  }
 }
 
 @layer utilities {
