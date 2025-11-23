@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useTheme } from "@/components/theme-provider";
-import { ArticleWithTOC } from "@/lib/types";
+import { ArticleWithTOC, Section } from "@/lib/types";
 import { useLanguage } from "@/hooks/use-language";
 import { ArticleHeader } from "@/components/article-header";
 import { ArticleHeroV2 } from "@/components/article-hero-v2";
@@ -13,7 +13,14 @@ import { TextSizeModalV2 } from "@/components/text-size-modal-v2";
 import { ShareModalV2 } from "@/components/share-modal-v2";
 import { SaveModalV2 } from "@/components/save-modal-v2";
 import { ArticleContent } from "@/components/article-content";
-import { TableOfContents } from "@/components/table-of-contents";
+import { ArticleTocNotion } from "@/components/article-toc-notion";
+
+interface TocSection {
+  id: string;
+  title: string;
+  level: number;
+  children?: TocSection[];
+}
 
 export default function ArticlePage() {
   const params = useParams();
@@ -105,6 +112,16 @@ export default function ArticlePage() {
     }
   };
 
+  // Convert Section[] to TocSection[] with proper children structure
+  const convertToTocSections = (sections: Section[]): TocSection[] => {
+    return sections.map(section => ({
+      id: section.id,
+      title: section.title,
+      level: section.level,
+      children: section.subsections ? convertToTocSections(section.subsections) : undefined
+    }));
+  };
+
   // Track active section on scroll
   useEffect(() => {
     const handleScroll = () => {
@@ -167,10 +184,9 @@ export default function ArticlePage() {
         {/* Table of Contents - Desktop Only */}
         <aside className="hidden lg:block lg:w-64 xl:w-72 flex-shrink-0 sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto py-8">
           {article.sections && article.sections.length > 0 && (
-            <TableOfContents
-              sections={article.sections}
+            <ArticleTocNotion
+              sections={convertToTocSections(article.sections)}
               activeSection={activeSection}
-              onSectionClick={scrollToSection}
             />
           )}
         </aside>
