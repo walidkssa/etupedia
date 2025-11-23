@@ -10,6 +10,7 @@ interface SaveModalProps {
   articleTitle: string;
   articleContent: string;
   coverImage?: string;
+  textModifications?: any[];
 }
 
 export function SaveModalV2({
@@ -18,6 +19,7 @@ export function SaveModalV2({
   articleTitle,
   articleContent,
   coverImage,
+  textModifications = [],
 }: SaveModalProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -60,9 +62,18 @@ export function SaveModalV2({
 
       yPosition += 10;
 
+      // Get the actual modified content from the DOM
+      const articleBody = document.querySelector(".article-body");
+      let contentToExport = articleContent;
+
+      if (articleBody && textModifications.length > 0) {
+        // Use the modified HTML from the actual DOM
+        contentToExport = articleBody.innerHTML;
+      }
+
       // Parse HTML content
       const parser = new DOMParser();
-      const htmlDoc = parser.parseFromString(articleContent, "text/html");
+      const htmlDoc = parser.parseFromString(contentToExport, "text/html");
       const elements = htmlDoc.body.querySelectorAll("*");
 
       elements.forEach((element) => {
@@ -71,12 +82,74 @@ export function SaveModalV2({
 
         if (!text) return;
 
-        // Skip if text is already in parent
-        if (element.parentElement && element.parentElement.textContent === text) {
+        // Skip if text is already in parent (except for spans with modifications)
+        const hasModification = element.hasAttribute('data-modification');
+        if (!hasModification && element.parentElement && element.parentElement.textContent === text) {
           return;
         }
 
+        // Check for text modifications (highlight, color, etc.)
+        const modificationType = element.getAttribute('data-modification');
+        const bgColor = (element as HTMLElement).style.backgroundColor;
+        const textColor = (element as HTMLElement).style.color;
+        const isUnderlined = (element as HTMLElement).style.textDecoration.includes('underline');
+        const isBold = (element as HTMLElement).style.fontWeight === 'bold';
+        const isItalic = (element as HTMLElement).style.fontStyle === 'italic';
+
         switch (tagName) {
+          case "span":
+            // Handle modified text spans
+            if (hasModification) {
+              checkAddPage(8);
+
+              // Set background color for highlights
+              if (bgColor && modificationType === 'highlight') {
+                // Convert RGB/hex to RGB values for jsPDF
+                const rgbMatch = bgColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+                if (rgbMatch) {
+                  const [_, r, g, b] = rgbMatch.map(Number);
+                  doc.setFillColor(r, g, b);
+                  doc.rect(margin - 1, yPosition - 4, contentWidth + 2, 6, 'F');
+                }
+              }
+
+              // Set text styling
+              const fontStyle = isBold && isItalic ? 'bolditalic' :
+                              isBold ? 'bold' :
+                              isItalic ? 'italic' : 'normal';
+              doc.setFont("helvetica", fontStyle);
+              doc.setFontSize(11);
+
+              // Set text color
+              if (textColor && modificationType === 'color') {
+                const rgbMatch = textColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+                if (rgbMatch) {
+                  const [_, r, g, b] = rgbMatch.map(Number);
+                  doc.setTextColor(r, g, b);
+                }
+              }
+
+              const spanLines = doc.splitTextToSize(text, contentWidth);
+              spanLines.forEach((line: string) => {
+                checkAddPage(6);
+                if (isUnderlined) {
+                  const textWidth = doc.getTextWidth(line);
+                  doc.text(line, margin, yPosition);
+                  doc.line(margin, yPosition + 0.5, margin + textWidth, yPosition + 0.5);
+                } else {
+                  doc.text(line, margin, yPosition);
+                }
+                yPosition += 6;
+              });
+
+              // Reset colors
+              doc.setTextColor(0, 0, 0);
+              yPosition += 2;
+              return;
+            }
+            break;
+
+
           case "h1":
           case "h2":
             checkAddPage(15);

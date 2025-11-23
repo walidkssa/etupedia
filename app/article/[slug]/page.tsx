@@ -15,6 +15,7 @@ import { SaveModalV2 } from "@/components/save-modal-v2";
 import { ArticleContent } from "@/components/article-content";
 import { FloatingTocNotion } from "@/components/floating-toc-notion";
 import { FloatingThemeToggle } from "@/components/floating-theme-toggle";
+import { TextSelectionToolbar } from "@/components/text-selection-toolbar";
 
 interface TocSection {
   id: string;
@@ -43,6 +44,9 @@ export default function ArticlePage() {
   const [textSize, setTextSize] = useState(16);
   const [selectedText, setSelectedText] = useState<string>("");
   const [activeSection, setActiveSection] = useState<string>("");
+
+  // Text modifications for PDF export
+  const [textModifications, setTextModifications] = useState<any[]>([]);
 
   useEffect(() => {
     if (slug && mounted) {
@@ -179,6 +183,13 @@ export default function ArticlePage() {
       {/* Floating Theme Toggle */}
       <FloatingThemeToggle isDark={theme === "dark"} onToggle={toggleTheme} />
 
+      {/* Text Selection Toolbar */}
+      <TextSelectionToolbar
+        onModification={(modification) => {
+          setTextModifications((prev) => [...prev, modification]);
+        }}
+      />
+
       {/* Floating Table of Contents - Notion Style */}
       {article.sections && article.sections.length > 0 && (
         <FloatingTocNotion
@@ -259,6 +270,7 @@ export default function ArticlePage() {
         articleTitle={article.title}
         articleContent={article.content}
         coverImage={coverImage}
+        textModifications={textModifications}
       />
     </div>
   );
