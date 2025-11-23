@@ -47,6 +47,7 @@ export function TextSelectionToolbar({
   const toolbarRef = useRef<HTMLDivElement>(null);
   const savedRange = useRef<Range | null>(null);
   const savedSelection = useRef<{ text: string; range: Range } | null>(null);
+  const isApplyingModification = useRef(false);
 
   const updateToolbarPosition = useCallback(() => {
     const selection = window.getSelection();
@@ -55,15 +56,18 @@ export function TextSelectionToolbar({
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
 
-    // Use window.pageYOffset to account for scroll position
+    // Use window.scrollX and window.scrollY for better compatibility
     setPosition({
-      x: rect.left + rect.width / 2 + window.pageXOffset,
-      y: rect.top + window.pageYOffset - 10,
+      x: rect.left + rect.width / 2 + window.scrollX,
+      y: rect.top + window.scrollY - 10,
     });
   }, []);
 
   useEffect(() => {
     const handleSelection = () => {
+      // Don't handle selection while applying modification
+      if (isApplyingModification.current) return;
+
       const selection = window.getSelection();
       const text = selection?.toString().trim();
 
@@ -82,50 +86,39 @@ export function TextSelectionToolbar({
 
           updateToolbarPosition();
           setIsVisible(true);
-          setShowHighlightColors(false);
-          setShowTextColors(false);
         }
       } else {
-        // Delay hiding to allow button clicks
-        setTimeout(() => {
-          if (!toolbarRef.current?.matches(':hover')) {
-            setIsVisible(false);
-            setShowHighlightColors(false);
-            setShowTextColors(false);
-          }
-        }, 100);
-      }
-    };
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
-        const selection = window.getSelection();
-        if (!selection || selection.toString().trim().length === 0) {
-          setIsVisible(false);
-          setShowHighlightColors(false);
-          setShowTextColors(false);
+        // Only hide if we're not showing color pickers
+        if (!showHighlightColors && !showTextColors) {
+          setTimeout(() => {
+            if (!toolbarRef.current?.matches(':hover') && !showHighlightColors && !showTextColors) {
+              setIsVisible(false);
+            }
+          }, 100);
         }
       }
     };
 
     document.addEventListener("mouseup", handleSelection);
     document.addEventListener("touchend", handleSelection);
-    document.addEventListener("click", handleClickOutside);
 
     return () => {
       document.removeEventListener("mouseup", handleSelection);
       document.removeEventListener("touchend", handleSelection);
-      document.removeEventListener("click", handleClickOutside);
     };
-  }, [updateToolbarPosition]);
+  }, [updateToolbarPosition, showHighlightColors, showTextColors]);
 
   const applyModification = useCallback((
     type: "highlight" | "underline" | "color" | "bold" | "italic",
     color?: string
   ) => {
-    if (!savedSelection.current) return;
+    if (!savedSelection.current) {
+      console.log("No saved selection");
+      return;
+    }
 
     const { text, range } = savedSelection.current;
+    isApplyingModification.current = true;
 
     try {
       // Create a span element with the styling
@@ -140,6 +133,7 @@ export function TextSelectionToolbar({
           span.style.backgroundColor = color || HIGHLIGHT_COLORS[0];
           span.style.padding = "2px 4px";
           span.style.borderRadius = "3px";
+          console.log("Applied highlight:", color);
           break;
         case "underline":
           span.style.textDecoration = "underline";
@@ -148,6 +142,7 @@ export function TextSelectionToolbar({
           break;
         case "color":
           span.style.color = color || TEXT_COLORS[0];
+          console.log("Applied color:", color);
           break;
         case "bold":
           span.style.fontWeight = "bold";
@@ -175,144 +170,201 @@ export function TextSelectionToolbar({
 
       onModification(modification);
 
-      // Clear selection and hide toolbar
+      // Clear selection
       const selection = window.getSelection();
       selection?.removeAllRanges();
 
-      setIsVisible(false);
-      setShowHighlightColors(false);
-      setShowTextColors(false);
-      savedSelection.current = null;
-      savedRange.current = null;
+      // Hide toolbar and reset state
+      setTimeout(() => {
+        setIsVisible(false);
+        setShowHighlightColors(false);
+        setShowTextColors(false);
+        savedSelection.current = null;
+        savedRange.current = null;
+        isApplyingModification.current = false;
+      }, 100);
     } catch (error) {
       console.error("Error applying modification:", error);
+      isApplyingModification.current = false;
     }
   }, [onModification]);
 
   if (!isVisible) return null;
 
   return (
-    <>
-      <div
-        ref={toolbarRef}
-        className="fixed z-50 bg-card border border-border rounded-lg shadow-2xl p-1.5 flex items-center gap-1"
-        style={{
-          left: `${position.x}px`,
-          top: `${position.y}px`,
-          transform: "translate(-50%, -100%)",
-        }}
+    <div
+      ref={toolbarRef}
+      className="fixed z-[100] bg-card border border-border rounded-lg shadow-2xl p-1.5 flex items-center gap-1"
+      style={{
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        transform: "translate(-50%, -100%)",
+      }}
+      onMouseDown={(e) => {
+        // Prevent default to keep selection
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      {/* Bold */}
+      <button
         onMouseDown={(e) => {
-          // Prevent toolbar from stealing focus and clearing selection
           e.preventDefault();
+          e.stopPropagation();
         }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          applyModification("bold");
+        }}
+        className="p-2 hover:bg-accent rounded transition-colors"
+        title="Bold"
       >
-        {/* Bold */}
+        <Bold className="w-4 h-4" />
+      </button>
+
+      {/* Italic */}
+      <button
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          applyModification("italic");
+        }}
+        className="p-2 hover:bg-accent rounded transition-colors"
+        title="Italic"
+      >
+        <Italic className="w-4 h-4" />
+      </button>
+
+      {/* Separator */}
+      <div className="w-px h-6 bg-border mx-1" />
+
+      {/* Highlight */}
+      <div className="relative">
         <button
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => applyModification("bold")}
-          className="p-2 hover:bg-accent rounded transition-colors"
-          title="Bold"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowHighlightColors(!showHighlightColors);
+            setShowTextColors(false);
+          }}
+          className={`p-2 hover:bg-accent rounded transition-colors ${showHighlightColors ? 'bg-accent' : ''}`}
+          title="Highlight"
         >
-          <Bold className="w-4 h-4" />
+          <Highlighter className="w-4 h-4" />
         </button>
 
-        {/* Italic */}
-        <button
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => applyModification("italic")}
-          className="p-2 hover:bg-accent rounded transition-colors"
-          title="Italic"
-        >
-          <Italic className="w-4 h-4" />
-        </button>
-
-        {/* Separator */}
-        <div className="w-px h-6 bg-border mx-1" />
-
-        {/* Highlight */}
-        <div className="relative">
-          <button
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={(e) => {
+        {showHighlightColors && (
+          <div
+            className="absolute top-full left-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-2 flex gap-1.5 z-[110]"
+            onMouseDown={(e) => {
+              e.preventDefault();
               e.stopPropagation();
-              setShowHighlightColors(!showHighlightColors);
-              setShowTextColors(false);
             }}
-            className="p-2 hover:bg-accent rounded transition-colors"
-            title="Highlight"
-          >
-            <Highlighter className="w-4 h-4" />
-          </button>
-
-          {showHighlightColors && (
-            <div
-              className="absolute top-full left-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-2 flex gap-1.5 z-50"
-              onMouseDown={(e) => e.preventDefault()}
-            >
-              {HIGHLIGHT_COLORS.map((color) => (
-                <button
-                  key={color}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    applyModification("highlight", color);
-                  }}
-                  className="w-6 h-6 rounded border-2 border-border hover:border-foreground transition-colors"
-                  style={{ backgroundColor: color }}
-                  title={`Highlight with ${color}`}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Underline */}
-        <button
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => applyModification("underline")}
-          className="p-2 hover:bg-accent rounded transition-colors"
-          title="Underline"
-        >
-          <Underline className="w-4 h-4" />
-        </button>
-
-        {/* Text Color */}
-        <div className="relative">
-          <button
-            onMouseDown={(e) => e.preventDefault()}
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
-              setShowTextColors(!showTextColors);
-              setShowHighlightColors(false);
             }}
-            className="p-2 hover:bg-accent rounded transition-colors"
-            title="Text Color"
           >
-            <Type className="w-4 h-4" />
-          </button>
-
-          {showTextColors && (
-            <div
-              className="absolute top-full right-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-2 flex gap-1.5 z-50"
-              onMouseDown={(e) => e.preventDefault()}
-            >
-              {TEXT_COLORS.map((color) => (
-                <button
-                  key={color}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    applyModification("color", color);
-                  }}
-                  className="w-6 h-6 rounded border-2 border-border hover:border-foreground transition-colors"
-                  style={{ backgroundColor: color }}
-                  title={`Color text with ${color}`}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+            {HIGHLIGHT_COLORS.map((color) => (
+              <button
+                key={color}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("Highlight color clicked:", color);
+                  applyModification("highlight", color);
+                }}
+                className="w-7 h-7 rounded border-2 border-border hover:border-foreground hover:scale-110 transition-all cursor-pointer"
+                style={{ backgroundColor: color }}
+                title={`Highlight with ${color}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
-    </>
+
+      {/* Underline */}
+      <button
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          applyModification("underline");
+        }}
+        className="p-2 hover:bg-accent rounded transition-colors"
+        title="Underline"
+      >
+        <Underline className="w-4 h-4" />
+      </button>
+
+      {/* Text Color */}
+      <div className="relative">
+        <button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowTextColors(!showTextColors);
+            setShowHighlightColors(false);
+          }}
+          className={`p-2 hover:bg-accent rounded transition-colors ${showTextColors ? 'bg-accent' : ''}`}
+          title="Text Color"
+        >
+          <Type className="w-4 h-4" />
+        </button>
+
+        {showTextColors && (
+          <div
+            className="absolute top-full right-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-2 flex gap-1.5 z-[110]"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            {TEXT_COLORS.map((color) => (
+              <button
+                key={color}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("Text color clicked:", color);
+                  applyModification("color", color);
+                }}
+                className="w-7 h-7 rounded border-2 border-border hover:border-foreground hover:scale-110 transition-all cursor-pointer"
+                style={{ backgroundColor: color }}
+                title={`Color text with ${color}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
