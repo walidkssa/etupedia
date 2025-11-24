@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export function ArticleHeader() {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm">
+    <header className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm">
       <div className="flex items-center justify-center px-4 h-16 max-w-7xl mx-auto">
         {/* Logo - Just "e" in Bristol - Centered - Reduced */}
         <Link href="/">

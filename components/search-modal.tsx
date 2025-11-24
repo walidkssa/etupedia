@@ -121,15 +121,15 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+        className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl mx-4">
-        <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+      {/* Modal - Full screen on mobile, centered on desktop */}
+      <div className="fixed inset-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 z-50 md:w-full md:max-w-2xl md:h-auto md:mx-4">
+        <div className="bg-card border-0 md:border md:border-border h-full md:h-auto md:rounded-2xl shadow-2xl overflow-hidden flex flex-col">
           {/* Search Input */}
-          <div className="flex items-center gap-3 px-6 py-5 border-b border-border">
+          <div className="flex items-center gap-3 px-4 md:px-6 py-4 md:py-5 border-b border-border shrink-0">
             <MagnifyingGlassIcon className="h-5 w-5 text-muted-foreground shrink-0" />
             <input
               ref={inputRef}
@@ -142,7 +142,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                 }
               }}
               placeholder="Search articles..."
-              className="flex-1 bg-transparent outline-none text-lg placeholder:text-muted-foreground"
+              className="flex-1 bg-transparent outline-none text-base md:text-lg placeholder:text-muted-foreground"
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"
@@ -150,15 +150,15 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
             />
             <button
               onClick={onClose}
-              className="p-2 hover:bg-accent rounded-lg transition-colors"
+              className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0"
               aria-label="Close"
             >
-              <Cross2Icon className="h-4 w-4 text-muted-foreground" />
+              <Cross2Icon className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
 
           {/* Results */}
-          <div className="max-h-[60vh] overflow-y-auto">
+          <div className="flex-1 overflow-y-auto md:max-h-[60vh]">
             {loading ? (
               <div className="py-12 text-center text-sm text-muted-foreground">
                 <div className="w-6 h-6 border-2 border-muted-foreground/20 border-t-foreground/50 rounded-full animate-spin mx-auto mb-3" />
@@ -240,9 +240,10 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
           </div>
 
           {/* Footer Hint */}
-          <div className="px-6 py-3 border-t border-border bg-muted/30">
+          <div className="px-4 md:px-6 py-3 border-t border-border bg-muted/30 shrink-0">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Press Enter to navigate</span>
+              <span className="hidden sm:inline">Press Enter to navigate</span>
+              <span className="sm:hidden">Tap to navigate</span>
               <span>ESC to close</span>
             </div>
           </div>

@@ -6,6 +6,7 @@ import { useTheme } from "@/components/theme-provider";
 import { ArticleWithTOC, Section } from "@/lib/types";
 import { useLanguage } from "@/hooks/use-language";
 import { ArticleHeader } from "@/components/article-header";
+import { MobileHeader } from "@/components/mobile-header";
 import { BottomNavV2 } from "@/components/bottom-nav-v2";
 import { LanguageModalV2 } from "@/components/language-modal-v2";
 import { TextSizeModalV2 } from "@/components/text-size-modal-v2";
@@ -198,8 +199,19 @@ export default function ArticlePage() {
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
-      {/* Header */}
+      {/* Desktop Header */}
       <ArticleHeader />
+
+      {/* Mobile Header - Only on mobile */}
+      {article.sections && article.sections.length > 0 && (
+        <MobileHeader
+          sections={convertToTocSections(article.sections)}
+          activeSection={activeSection}
+          isDark={theme === "dark"}
+          onThemeToggle={toggleTheme}
+          onSearchClick={() => setSearchModalOpen(true)}
+        />
+      )}
 
       {/* Sidebar Images - Desktop Only */}
       <ArticleSidebarImages images={extractedImages} />
@@ -231,11 +243,11 @@ export default function ArticlePage() {
       )}
 
       {/* Main Container - Centered */}
-      <div className="max-w-3xl mx-auto px-4 md:px-6 lg:px-8 pt-24">
+      <div className="max-w-3xl mx-auto px-4 md:px-6 lg:px-8 pt-20 md:pt-24">
         {/* Article Content */}
         <main className="w-full">
           {/* Title - directement sous le header */}
-          <div className="py-6 md:py-8">
+          <div className="py-4 md:py-6 lg:py-8">
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">
               {article.title}
             </h1>
