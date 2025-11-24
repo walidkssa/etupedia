@@ -69,24 +69,44 @@ export default function Home() {
       )}
 
       {/* Header */}
-      <header className="absolute top-0 right-0 p-6 z-[100] flex gap-2">
-        <LanguageSelector compact />
-        <button
-          onClick={toggleTheme}
-          className="p-2.5 rounded-lg hover:bg-accent transition-colors cursor-pointer relative z-[100]"
-          aria-label="Toggle theme"
-          suppressHydrationWarning
-          type="button"
-          style={{ pointerEvents: "auto" }}
+      <header className="absolute top-0 left-0 right-0 p-6 z-[100] flex justify-between items-start">
+        {/* Left: X (Twitter) Link */}
+        <a
+          href="https://x.com/walidkousssa"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="p-2.5 rounded-lg hover:bg-accent transition-colors cursor-pointer"
+          aria-label="Follow on X"
         >
-          {mounted && (
-            isDark ? (
-              <MoonIcon className="w-5 h-5" />
-            ) : (
-              <SunIcon className="w-5 h-5" />
-            )
-          )}
-        </button>
+          <svg
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+          </svg>
+        </a>
+
+        {/* Right: Language + Theme */}
+        <div className="flex gap-2">
+          <LanguageSelector compact />
+          <button
+            onClick={toggleTheme}
+            className="p-2.5 rounded-lg hover:bg-accent transition-colors cursor-pointer relative z-[100]"
+            aria-label="Toggle theme"
+            suppressHydrationWarning
+            type="button"
+            style={{ pointerEvents: "auto" }}
+          >
+            {mounted && (
+              isDark ? (
+                <MoonIcon className="w-5 h-5" />
+              ) : (
+                <SunIcon className="w-5 h-5" />
+              )
+            )}
+          </button>
+        </div>
       </header>
 
       {/* Main content - centered vertically */}
@@ -111,12 +131,15 @@ export default function Home() {
 
       {/* Article count at bottom */}
       <footer className="absolute bottom-4 left-0 right-0 z-10">
-        <div className="text-center space-y-1">
+        <div className="text-center space-y-2">
           <p className="text-[10px] sm:text-xs text-muted-foreground">
             Articles Available
           </p>
           <p className="text-sm sm:text-base font-normal tracking-tight text-foreground" style={{ fontFamily: '-apple-system, "SF Pro Display", system-ui, sans-serif' }}>
             {articleCount.toLocaleString()}
+          </p>
+          <p className="text-[10px] text-muted-foreground/60 italic">
+            wikipedia 2.0
           </p>
         </div>
       </footer>
